@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flow-codeblock.local/schemas/script-interface-doc.v1.json",
+  "title": "Flow Script Interface Document v1",
+  "type": "object",
+  "required": ["schema_version", "endpoint"],
+  "properties": {
+    "schema_version": {"const": "script-interface-doc.v1"},
+    "title": {"type": "string", "maxLength": 200},
+    "summary": {"type": "string", "maxLength": 2000},
+    "endpoint": {
+      "type": "object",
+      "required": ["methods"],
+      "properties": {
+        "methods": {"type": "array", "items": {"enum": ["GET", "POST"]}, "minItems": 1, "maxItems": 2, "uniqueItems": true},
+        "path": {"type": "string", "pattern": "^/flow/codeblock/", "description": "可省略；服务端按当前脚本 ID 生成，传入值不会用于覆盖系统路径。"},
+        "description": {"type": "string", "maxLength": 4000}
+      },
+      "additionalProperties": false
+    },
+    "request": {
+      "type": "object",
+      "properties": {
+        "query": {"$ref": "#/$defs/parameters"},
+        "headers": {"$ref": "#/$defs/parameters"},
+        "body": {"$ref": "#/$defs/body"}
+      },
+      "additionalProperties": false
+    },
+    "responses": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/response"},
+      "maxItems": 50
+    },
+    "logic_description": {"type": "string", "maxLength": 20000},
+    "usage_refs": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/usage"},
+      "maxItems": 100
+    }
+  },
+  "$defs": {
+    "parameters": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["name", "required", "description"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 200},
+          "type": {"enum": ["string", "integer", "number", "boolean", "array", "object"]},
+          "required": {"type": "boolean"},
+          "description": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "example": {},
+          "default": {},
+          "format": {"type": "string", "maxLength": 100},
+          "enum_values": {"type": "array", "maxItems": 100}
+        },
+        "additionalProperties": false
+      }
+    },
+    "body": {
+      "type": "object",
+      "properties": {
+        "content_type": {"type": "string", "maxLength": 200},
+        "schema": {},
+        "example": {}
+      },
+      "additionalProperties": false
+    },
+    "response": {
+      "type": "object",
+      "required": ["status", "description"],
+      "properties": {
+        "status": {"type": "integer", "minimum": 100, "maximum": 599},
+        "description": {"type": "string", "maxLength": 4000},
+        "content_type": {"type": "string", "maxLength": 200},
+        "schema": {},
+        "example": {}
+      },
+      "additionalProperties": false
+    },
+    "usage": {
+      "type": "object",
+      "required": ["app_name"],
+      "properties": {
+        "app_id": {"type": "string", "maxLength": 200},
+        "app_name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "location": {"type": "string", "maxLength": 500},
+        "note": {"type": "string", "maxLength": 4000}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

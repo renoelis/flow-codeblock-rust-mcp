@@ -1,0 +1,54 @@
+{
+  "auto_install_on_startup": true,
+  "modules": [
+    {
+      "name": "axios",
+      "version": "1.12.2"
+    },
+    {
+      "name": "cheerio",
+      "version": "1.1.2"
+    },
+    {
+      "name": "crypto-js",
+      "version": "4.2.0"
+    },
+    {
+      "name": "csv-parser",
+      "version": "3.2.0"
+    },
+    {
+      "name": "fast-xml-parser",
+      "version": "5.3.0"
+    },
+    {
+      "name": "form-data",
+      "version": "4.0.5"
+    },
+    {
+      "name": "lodash",
+      "version": "4.17.21"
+    },
+    {
+      "name": "qs",
+      "version": "6.14.0"
+    },
+    {
+      "name": "sm-crypto-v2",
+      "version": "1.15.0"
+    },
+    {
+      "name": "uuid",
+      "version": "13.0.0"
+    },
+    {
+      "name": "xlsx",
+      "version": "0.18.5"
+    },
+    {
+      "name": "dayjs",
+      "version": "1.11.19"
+    }
+  ],
+  "registry": "https://registry.npmmirror.com"
+}

@@ -1,0 +1,39 @@
+{
+  "_comment": "危险关键词与成员模式列表；宿主机修改后重启服务生效，不支持接口热重载",
+  "identifiers": {
+    "Function": "检测到 Function",
+    "Proxy": "检测到 Proxy",
+    "__proto__": "检测到 __proto__",
+    "child_process": "检测到 child_process",
+    "eval": "检测到 eval",
+    "exec": "检测到 exec",
+    "execFile": "检测到 execFile",
+    "execSync": "检测到 execSync",
+    "exports": "禁止使用 exports（CommonJS module/exports 已禁用）",
+    "fork": "检测到 fork",
+    "module": "禁止使用 module（CommonJS module/exports 已禁用）",
+    "spawn": "检测到 spawn",
+    "setImmediate": "检测到 setImmediate",
+    "setInterval": "检测到 setInterval",
+    "setTimeout": "检测到 setTimeout"
+  },
+  "members": {
+    "Object": {
+      "getPrototypeOf": "检测到 Object.getPrototypeOf",
+      "setPrototypeOf": "检测到 Object.setPrototypeOf"
+    },
+    "Reflect": {
+      "apply": "检测到 Reflect.apply",
+      "construct": "检测到 Reflect.construct",
+      "get": "检测到 Reflect.get",
+      "set": "检测到 Reflect.set"
+    },
+    "process": {
+      "_linkedBinding": "检测到 process._linkedBinding",
+      "binding": "检测到 process.binding",
+      "dlopen": "检测到 process.dlopen",
+      "exit": "检测到 process.exit",
+      "kill": "检测到 process.kill"
+    }
+  }
+}

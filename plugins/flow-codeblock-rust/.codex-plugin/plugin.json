@@ -1,0 +1,24 @@
+{
+  "name": "flow-codeblock-rust",
+  "version": "0.1.0",
+  "description": "通过本地 stdio MCP 管理、校验、发布和执行 Flow Codeblock Rust+Bun 脚本。",
+  "repository": "https://github.com/renoelis/flow-codeblock-rust-mcp",
+  "author": {
+    "name": "renoelis"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Flow Codeblock Rust+Bun",
+    "shortDescription": "管理和执行 Flow Codeblock Rust+Bun 脚本",
+    "longDescription": "提供与当前 Rust API 契约匹配的本地 stdio MCP 工具，用于查询脚本、预览并确认变更、维护接口文档、锁定/解锁和执行已发布脚本。",
+    "developerName": "renoelis",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "查询当前 Flow Codeblock Rust+Bun 的脚本",
+      "预览并确认一个脚本或接口文档更新",
+      "执行指定脚本并查看返回结果"
+    ]
+  },
+  "mcpServers": "./.mcp.json"
+}
