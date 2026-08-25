@@ -7,14 +7,16 @@ import {
 const allowedModules = [
   "axios",
   "cheerio",
-  "crypto-js",
   "csv-parser",
   "fast-xml-parser",
   "form-data",
   "lodash",
+  "pinyin-pro",
   "qs",
+  "read-excel-file",
   "sm-crypto-v2",
   "uuid",
+  "write-excel-file",
   "xlsx",
   "dayjs",
 ];
@@ -141,7 +143,7 @@ export function codeWriterContext(
     code_rules: [
       "所有业务数据只从全局 input 读取，不从环境变量、持久化全局变量或其他外部状态读取；返回值必须可 JSON 序列化。",
       "默认使用顶层 return；只有事件式/异步流程或用户明确要求时才使用 qf_output，且必须是裸的 qf_output = { ... } 对象字面量赋值，不能与顶层 return 混用，也不能遮蔽该标识符。",
-      "优先标准 JavaScript 和服务端原生 fetch；只有原生能力确实无法满足且用户明确要求时，才使用白名单 CommonJS 字面量 require。",
+      "优先标准 JavaScript、服务端原生 fetch 和 node:crypto；只有原生能力确实无法满足且用户明确要求时，才使用白名单 CommonJS 字面量 require。crypto-js 已移除，不得生成该模块调用。",
       "禁止 import/export、动态 require、浏览器 API、定时器、阻止标识符、阻止成员和黑名单 Node 模块，不得写入真实凭据。",
       "业务逻辑和异步操作放在 try-catch 中；错误转换为字符串或普通对象后返回。",
       "不得创建无界循环、未 settle 的 Promise 或执行结束后仍运行的后台任务；所有请求必须 await 或 return。",
@@ -154,7 +156,7 @@ export function codeWriterContext(
     require_policy: {
       allowed_call_form: "仅允许单个字符串字面量 require('模块名')，不得间接调用、动态模块名或使用 import/export。",
       dayjs_exception: "日期处理优先原生 Date；复杂日期解析/格式化/时区才允许使用 dayjs。",
-      other_modules: "除 dayjs 外，只有原生能力确实无法实现且用户明确要求时才允许白名单模块。",
+      other_modules: "除 dayjs 外，只有原生能力确实无法实现且用户明确要求时才允许白名单模块；Excel 仅允许 read-excel-file/node、read-excel-file/universal、write-excel-file/node、write-excel-file/universal 和 write-excel-file/utility。",
     },
     forbidden: {
       identifiers: [

@@ -45,7 +45,7 @@ Authorization: Bearer <INTERNAL_ACCESS_TOKEN>
 }
 ```
 
-超时时间可省略，且必须位于 `MIN_EXECUTION_TIMEOUT_MS` 与 `MAX_EXECUTION_TIMEOUT_MS` 之间。`xlsx` 脚本会自动路由到专用池。
+超时时间可省略，且必须位于 `MIN_EXECUTION_TIMEOUT_MS` 与 `MAX_EXECUTION_TIMEOUT_MS` 之间。`read-excel-file`、`write-excel-file` 与 `xlsx` 脚本会自动路由到共享重型池；Excel 只允许 `read-excel-file/{node,universal}`、`write-excel-file/{node,universal,utility}` 入口。加密请使用 `node:crypto`，不要使用已移除的 `crypto-js`。
 
 ## 脚本管理
 

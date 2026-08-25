@@ -54,3 +54,5 @@ description: 使用 Flow Codeblock Rust+Bun MCP 工具查询、校验、发布�
 ## 代码生成规则
 
 用户代码必须使用 `input` 接收输入并通过顶层 `return` 或合法的 `qf_output` 返回结果；只使用允许模块，遵守代码、输入、结果和超时限制。脚本模式内部生成可执行 JavaScript 和可提交的 `interface_doc` JSON，用于预览、校验和发布；最终默认只展示接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的 `script_url`，不主动回显 JavaScript 或原始 `interface_doc`，除非用户明确索要源码或原始文档。非脚本模式展示完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和 `execution_url`。
+
+加密优先使用 `node:crypto`，不得生成已移除的 `crypto-js`。Excel 只允许 `read-excel-file/node`、`read-excel-file/universal`、`write-excel-file/node`、`write-excel-file/universal` 和 `write-excel-file/utility` 入口；禁止使用这些包的根入口、浏览器入口或 web-worker 入口。

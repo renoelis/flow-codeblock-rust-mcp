@@ -10,10 +10,6 @@
       "version": "1.1.2"
     },
     {
-      "name": "crypto-js",
-      "version": "4.2.0"
-    },
-    {
       "name": "csv-parser",
       "version": "3.2.0"
     },
@@ -30,8 +26,16 @@
       "version": "4.17.21"
     },
     {
+      "name": "pinyin-pro",
+      "version": "3.29.3"
+    },
+    {
       "name": "qs",
       "version": "6.14.0"
+    },
+    {
+      "name": "read-excel-file",
+      "version": "9.3.10"
     },
     {
       "name": "sm-crypto-v2",
@@ -40,6 +44,10 @@
     {
       "name": "uuid",
       "version": "13.0.0"
+    },
+    {
+      "name": "write-excel-file",
+      "version": "4.1.1"
     },
     {
       "name": "xlsx",

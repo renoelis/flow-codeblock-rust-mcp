@@ -7,7 +7,7 @@ Flow Codeblock Rust+Bun 的本地 stdio MCP Server。它只调用服务端 Rust 
 需要 Bun 1.4.0 或更高版本：
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.2
+bunx --bun flow-codeblock-rust-mcp@0.1.3
 ```
 
 配置环境变量：
@@ -26,7 +26,7 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.2"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.3"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_INTERNAL_ACCESS_TOKEN>"
@@ -37,6 +37,8 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
 ```
 
 ## 工具边界
+
+代码契约使用当前 Rust+Bun 模块白名单：`crypto-js` 已移除，加密应使用 `node:crypto`。Excel 仅允许 `read-excel-file/node`、`read-excel-file/universal`、`write-excel-file/node`、`write-excel-file/universal` 和 `write-excel-file/utility` 入口；这些模块由服务端共享重型执行池承载。
 
 工具覆盖代码生成、未发布代码测试、脚本列表、版本读取、接口文档校验/预览/保存、脚本创建/更新、锁定/解锁和已发布脚本执行。创建或代码更新可提交完整接口文档或 RFC 6902 `interface_doc_patch`；预览会调用 `/flow/scripts/validate`，应用时会再次透传补丁并使用事务级 `expected_version` 检测并发冲突。所有脚本写操作需要预览后显式 `confirm: true`。
 

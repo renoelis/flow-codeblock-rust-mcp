@@ -36,7 +36,7 @@ const serverInstructions = [
   "接口文档 endpoint.path 只写相对路径：创建时省略，更新时写 /flow/codeblock/<实际脚本ID>。对外展示的完整调用地址必须使用用户提供的域名拼接 /flow/codeblock/{{脚本ID}}；不要把真实 Token、密码、Cookie 或 Authorization 值写入代码、文档、示例或 URL。",
   "脚本模式输入来自 input.query、input.header、input.body、input.cookies；即时非脚本模式 POST /flow/codeblock 的 body.input 原样成为全局 input。代码默认使用顶层 return；只有事件式/异步流程或用户明确要求时才使用裸 qf_output 赋值，不能混用。",
   "最终用户交付按模式区分：non_script 输出完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和完整 execution_url；script 默认不主动回显 JavaScript 或原始 interface_doc，只输出接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的完整 script_url，除非用户明确索要源码或原始文档。script 的代码与 interface_doc 仍必须内部提交给预览、校验和发布工具。",
-  "优先原生 JavaScript、URL/URLSearchParams 和 fetch；禁止浏览器 API、定时器、动态模块加载、黑名单 Node 模块和危险标识符。HTTP 请求必须检查状态并处理 JSON/文本/空响应，所有异步任务必须显式 await 或 return。",
+  "优先原生 JavaScript、URL/URLSearchParams、fetch 和 node:crypto；crypto-js 已移除，禁止生成该模块调用。禁止浏览器 API、定时器、动态模块加载、黑名单 Node 模块和危险标识符。Excel 仅允许 read-excel-file/node、read-excel-file/universal、write-excel-file/node、write-excel-file/universal 和 write-excel-file/utility。HTTP 请求必须检查状态并处理 JSON/文本/空响应，所有异步任务必须显式 await 或 return。",
   "执行脚本时 method 只能是 GET 或 POST；MCP 认证、Cookie、CSRF、代理来源头和测试工具标识会被过滤。不要使用删除脚本、紧急恢复解锁或任意 HTTP 代理能力，本 MCP 不提供这些工具。",
 ].join("\n");
 
@@ -293,7 +293,7 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.2" },
+    { name: "flow-codeblock-rust", version: "0.1.3" },
     { instructions: serverInstructions },
   );
 

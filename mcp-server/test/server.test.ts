@@ -113,6 +113,29 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(payload).not.toHaveProperty("script_url");
   });
 
+  test("publishes the current module contract without removed crypto-js or invalid Excel entries", async () => {
+    const response = await callTool("http://127.0.0.1:3003", "flow_write_code", {
+      mode: "non_script",
+      requirement: "生成一个需要拼音和 Excel 往返的处理脚本",
+    });
+    const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+    const payload = JSON.parse(text) as {
+      allowed_modules?: unknown;
+      require_policy?: { other_modules?: string };
+      code_rules?: string[];
+    };
+    const allowed = payload.allowed_modules as string[];
+    expect(allowed).toContain("pinyin-pro");
+    expect(allowed).toContain("read-excel-file");
+    expect(allowed).toContain("write-excel-file");
+    expect(allowed).toContain("xlsx");
+    expect(allowed).not.toContain("crypto-js");
+    expect(payload.require_policy?.other_modules).toContain("read-excel-file/node");
+    expect(payload.require_policy?.other_modules).toContain("write-excel-file/utility");
+    expect(payload.code_rules?.join(" ")).toContain("node:crypto");
+    expect(payload.code_rules?.join(" ")).toContain("crypto-js");
+  });
+
   test("uses bearer authentication for management requests", async () => {
     await withMockApi(
       (request) => {

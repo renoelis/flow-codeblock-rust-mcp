@@ -9,7 +9,7 @@
 需要 Bun `1.4.0` 或更高版本：
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.2
+bunx --bun flow-codeblock-rust-mcp@0.1.3
 ```
 
 启动前由 MCP 客户端注入以下环境变量：
@@ -30,7 +30,7 @@ FLOW_CODEBLOCK_TOKEN=<由服务管理员签发的访问令牌>
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.2"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.3"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -57,6 +57,8 @@ Skill 要求脚本写入遵循“读取当前版本 -> 预览 -> 服务端校验
 最终用户交付按模式区分：`non_script` 输出完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和完整 `execution_url`；`script` 默认不主动回显 JavaScript 或原始 `interface_doc`，只输出接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的完整 `script_url`。脚本代码与 `interface_doc` 仍由 MCP 内部用于预览、校验和发布，除非用户明确索要源码或原始文档。
 
 ## 工具边界
+
+代码契约使用当前 Rust+Bun 模块白名单：`crypto-js` 已移除，加密应使用 `node:crypto`。Excel 仅允许 `read-excel-file/node`、`read-excel-file/universal`、`write-excel-file/node`、`write-excel-file/universal` 和 `write-excel-file/utility` 入口；这些模块由服务端共享重型执行池承载。
 
 MCP 提供脚本列表、当前/历史版本读取、接口文档读取与校验、代码和文档的预览/确认保存、锁定/解锁、已发布脚本执行，以及未发布代码测试。管理请求使用 `Authorization: Bearer <token>`；执行已发布脚本时不会把 MCP Token 转发给用户脚本。
 

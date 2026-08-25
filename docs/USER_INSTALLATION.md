@@ -19,7 +19,7 @@ bun --version
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.2"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.3"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -36,7 +36,7 @@ bun --version
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_FLOW_CODEBLOCK_TOKEN>'
-bunx --bun flow-codeblock-rust-mcp@0.1.2
+bunx --bun flow-codeblock-rust-mcp@0.1.3
 ```
 
 进程启动后会等待客户端通过 stdio 通信，这是正常行为。
