@@ -56,6 +56,63 @@ const json = (data: unknown, status = 200) =>
   Response.json({ success: true, data }, { status });
 
 describe("Flow Codeblock Rust MCP", () => {
+  test("publishes server instructions and actionable tool metadata", async () => {
+    const api = new FlowApiClient({ baseUrl: "http://127.0.0.1:3003", token: "test-token" });
+    const server = createMcpServer({ api });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: "test-client", version: "0.1.0" }, { capabilities: {} });
+    await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+    try {
+      const instructions = client.getInstructions() ?? "";
+      expect(instructions).toContain("flow_preview_script_change");
+      expect(instructions).toContain("/flow/codeblock/{{脚本ID}}");
+      expect(instructions).toContain("content_type=application/json");
+      expect(instructions).toContain("最终用户交付按模式区分");
+      expect(instructions).toContain("script 默认不主动回显 JavaScript 或原始 interface_doc");
+      const listed = await client.listTools();
+      const writeCode = listed.tools.find((tool) => tool.name === "flow_write_code");
+      expect(writeCode?.description).toContain("完整 script-interface-doc.v1");
+      expect(writeCode?.description).toContain("最终交付默认只展示接口调用说明");
+      expect(writeCode?.inputSchema.properties?.base_url).toBeDefined();
+      const baseUrlSchema = writeCode?.inputSchema.properties?.base_url as { description?: string } | undefined;
+      expect(baseUrlSchema?.description).toContain("/flow/codeblock/{{script_id}}");
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
+  test("returns the caller-domain script endpoint template", async () => {
+    const response = await callTool("http://127.0.0.1:3003", "flow_write_code", {
+      mode: "script",
+      requirement: "查询订单状态",
+      base_url: "https://flow.example.com/",
+    });
+    const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+    const payload = JSON.parse(text) as { endpoint_url_template?: string };
+    expect(payload.endpoint_url_template).toBe("https://flow.example.com/flow/codeblock/{{script_id}}");
+    expect(payload.final_deliverables).toEqual([
+      "接口调用说明",
+      "请求参数及示例",
+      "执行逻辑",
+      "成功/错误输出示例",
+      "发布后的完整 script_url",
+    ]);
+    expect(payload.internal_artifacts).toEqual([
+      "只含可执行代码的 JavaScript 代码块（提交预览、校验和发布；默认不回显）",
+      "独立且完整的 script-interface-doc.v1 JSON 对象（提交预览、校验和发布；默认不回显）",
+    ]);
+
+    const nonScript = await callTool("http://127.0.0.1:3003", "flow_write_code", {
+      mode: "non_script",
+      requirement: "处理输入并返回结果",
+    });
+    const nonScriptText = (nonScript.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+    expect(JSON.parse(nonScriptText).execution_url).toBe("http://127.0.0.1:3003/flow/codeblock");
+    expect(payload).not.toHaveProperty("execution_url");
+    expect(payload).not.toHaveProperty("script_url");
+  });
+
   test("uses bearer authentication for management requests", async () => {
     await withMockApi(
       (request) => {
@@ -103,11 +160,69 @@ describe("Flow Codeblock Rust MCP", () => {
         const text = previewResult.content?.[0];
         expect(text?.type).toBe("text");
         const previewData = JSON.parse(text?.type === "text" && text.text ? text.text : "{}");
+        const applied = await client.callTool({
+          name: "flow_apply_script_change",
+          arguments: { preview_id: previewData.preview_id, confirm: true },
+        });
+        const appliedText = (applied.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+        expect(JSON.parse(appliedText).data.script_url).toBe(`${baseUrl}/flow/codeblock/abc`);
+        expect(requests.map((request) => request.method)).toEqual(["GET", "GET", "PUT"]);
+        await client.close();
+        await server.close();
+      },
+    );
+  });
+
+  test("previews RFC 6902 patches as a compact summary and revalidates before publish", async () => {
+    await withMockApi(
+      (request) => {
+        if (request.method === "GET") {
+          return json({ available_versions: [2], current_version: 2, data: [{ version: 2 }] });
+        }
+        if (request.method === "POST") {
+          expect(request.url).toContain("/flow/scripts/validate");
+          expect(request.body).toEqual({
+            script_id: "abc",
+            expected_version: 2,
+            interface_doc_patch: [{ op: "replace", path: "/summary", value: "new summary" }],
+          });
+          return json({
+            valid: true,
+            warnings: ["warning"],
+            interface_doc: { summary: "SENSITIVE_MERGED_DOCUMENT" },
+          });
+        }
+        if (request.method === "PUT") {
+          expect(request.body).toEqual({
+            expected_version: 2,
+            interface_doc_patch: [{ op: "replace", path: "/summary", value: "new summary" }],
+          });
+          return json({ script_id: "abc", version: 3 });
+        }
+        return new Response("unexpected write", { status: 500 });
+      },
+      async (baseUrl, requests) => {
+        const api = new FlowApiClient({ baseUrl, token: "test-token" });
+        const previews = new PreviewStore<Record<string, unknown>>();
+        const server = createMcpServer({ api, previews });
+        const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+        const client = new Client({ name: "test-client", version: "0.1.0" }, { capabilities: {} });
+        await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
+        const patch = [{ op: "replace", path: "/summary", value: "new summary" }];
+        const preview = await client.callTool({
+          name: "flow_preview_script_change",
+          arguments: { operation: "update", script_id: "abc", expected_version: 2, interface_doc_patch: patch },
+        });
+        const text = (preview.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+        expect(text).toContain("operation_count");
+        expect(text).toContain("/summary");
+        expect(text).not.toContain("SENSITIVE_MERGED_DOCUMENT");
+        const previewData = JSON.parse(text) as { preview_id?: string };
         await client.callTool({
           name: "flow_apply_script_change",
           arguments: { preview_id: previewData.preview_id, confirm: true },
         });
-        expect(requests.map((request) => request.method)).toEqual(["GET", "GET", "PUT"]);
+        expect(requests.map((request) => request.method)).toEqual(["GET", "POST", "GET", "POST", "PUT"]);
         await client.close();
         await server.close();
       },
@@ -148,6 +263,8 @@ describe("Flow Codeblock Rust MCP", () => {
           timeout_ms: 5000,
         });
         expect(JSON.stringify(response)).toContain("ok");
+        const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+        expect(JSON.parse(text).script_url).toBe(`${baseUrl}/flow/codeblock/abc`);
       },
     );
   });
@@ -167,6 +284,8 @@ describe("Flow Codeblock Rust MCP", () => {
           input: { ok: true },
         });
         expect(JSON.stringify(response)).toContain("ok");
+        const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+        expect(JSON.parse(text).execution_url).toBe(`${baseUrl}/flow/codeblock`);
         expect(JSON.stringify(response)).not.toContain("test-token");
       },
     );

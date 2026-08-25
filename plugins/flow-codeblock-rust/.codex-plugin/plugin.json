@@ -1,6 +1,6 @@
 {
   "name": "flow-codeblock-rust",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "通过本地 stdio MCP 管理、校验、发布和执行 Flow Codeblock Rust+Bun 脚本。",
   "repository": "https://github.com/renoelis/flow-codeblock-rust-mcp",
   "author": {

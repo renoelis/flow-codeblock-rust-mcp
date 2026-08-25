@@ -54,10 +54,10 @@ Authorization: Bearer <INTERNAL_ACCESS_TOKEN>
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | POST | `/flow/scripts` | 创建脚本 |
-| POST | `/flow/scripts/validate` | 只读校验代码、IP 白名单和接口文档 |
+| POST | `/flow/scripts/validate` | 只读校验代码、IP 白名单和完整文档或 RFC 6902 补丁 |
 | GET | `/flow/scripts` | 分页查询脚本 |
 | GET | `/flow/scripts/{script_id}` | 查询当前脚本或指定版本 |
-| PUT | `/flow/scripts/{script_id}` | 更新脚本、描述、IP 白名单或回滚版本 |
+| PUT | `/flow/scripts/{script_id}` | 更新脚本、描述、IP 白名单、完整文档、RFC 6902 补丁或回滚版本 |
 | GET | `/flow/scripts/{script_id}/documentation` | 查询当前或指定版本的接口文档 |
 | POST | `/flow/scripts/{script_id}/documentation` | 校验并规范化 JSON 接口文档，不写入数据库 |
 | PUT | `/flow/scripts/{script_id}/documentation` | 保存接口文档并创建新的文档版本 |
@@ -76,9 +76,11 @@ Authorization: Bearer <INTERNAL_ACCESS_TOKEN>
 }
 ```
 
-更新请求可选择性传入 `expected_version`、`code_base64`、`description`、`ip_whitelist`、`interface_doc` 或 `rollback_to_version`。`expected_version` 在数据库行锁事务内校验，冲突返回 HTTP 409 `VersionConflictError`。创建脚本时，`ip_whitelist: null` 或 `ip_whitelist: []` 均表示不限制来源 IP。更新脚本时，省略 `ip_whitelist` 表示保持原值，`ip_whitelist: null` 或 `ip_whitelist: []` 表示清除白名单并允许所有来源 IP。`code_base64` 与 `rollback_to_version` 不能同时出现。`MAX_SCRIPT_VERSIONS` 控制保留版本数，范围为 1-1000。
+更新请求可选择性传入 `expected_version`、`code_base64`、`description`、`ip_whitelist`、`interface_doc`、`interface_doc_patch` 或 `rollback_to_version`。`interface_doc` 与 `interface_doc_patch` 互斥；补丁仅允许已有脚本，必须携带正整数 `expected_version`。服务端先 canonical 化当前文档，再按顺序应用最多 256 个 RFC 6902 操作并完整校验，版本冲突返回 HTTP 409 `VersionConflictError`。创建脚本禁止补丁；`code_base64` 与 `rollback_to_version` 不能同时出现。
 
-接口文档使用 `script-interface-doc.v1` 规范。请求方式仅支持脚本运行时的 `GET`、`POST`；原生文档中的 `endpoint.path` 可以省略，即使传入也会由服务端按当前脚本 ID 覆盖为 `/flow/codeblock/{script_id}`。请求体和响应体中的 `schema` 使用 JSON Schema；同一响应状态码可以按不同业务结果记录多项说明。文档可以通过 `document` 传入规范化 JSON，也可以通过 `raw_document` 与 `format=json` 传入 JSON 或 OpenAPI 子集。服务端会限制文档大小、参数数量和字段长度，并在脚本锁定时拒绝保存。仅修改脚本描述或 IP 白名单不会递增脚本版本号；代码或接口文档变更会创建新的版本。重复提交完全相同的代码和文档不会递增版本。
+接口文档使用 `script-interface-doc.v1` 规范。请求方式仅支持脚本运行时的 `GET`、`POST`；`endpoint.path` 创建时可省略，更新时使用 `/flow/codeblock/<实际脚本ID>`。对外完整地址由用户提供的域名拼接 `/flow/codeblock/{{脚本ID}}`。请求体和响应体中的 `schema` 使用 JSON Schema；同一响应状态码可以按不同业务结果记录多项说明。文档可以通过 `document`、`raw_document` 或已有文档上的 `document_patch` 提交；补丁路径使用 JSON Pointer，预览结果只返回操作数量、路径、警告和版本信息，不回显完整合并文档。仅修改脚本描述或 IP 白名单不会递增脚本版本号；canonical 文档或代码变更才会创建新版本。
+
+最终用户交付按模式区分：非脚本模式展示完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和完整 `execution_url`；脚本模式默认不展示 JavaScript 或原始 `interface_doc`，只展示接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的完整 `script_url`，除非用户明确索要源码或原始文档。
 
 示例：
 
@@ -87,8 +89,10 @@ Authorization: Bearer <INTERNAL_ACCESS_TOKEN>
   "document": {
     "schema_version": "script-interface-doc.v1",
     "title": "客户信息查询",
+    "summary": "按客户编号查询客户信息。",
     "endpoint": {
-      "methods": ["GET", "POST"]
+      "methods": ["GET"],
+      "description": "通过客户编号查询客户信息的只读接口。"
     },
     "request": {
       "query": [{
@@ -97,13 +101,22 @@ Authorization: Bearer <INTERNAL_ACCESS_TOKEN>
         "required": true,
         "description": "客户编号",
         "example": "C10001"
-      }]
+      }],
+      "headers": []
     },
     "responses": [{
       "status": 200,
       "description": "查询成功",
+      "content_type": "application/json",
+      "schema": {
+        "type": "object",
+        "properties": {"success": {"type": "boolean"}},
+        "required": ["success"],
+        "additionalProperties": false
+      },
       "example": {"success": true}
-    }]
+    }],
+    "logic_description": "校验客户编号后查询客户信息；查询失败时返回对应错误响应。"
   }
 }
 ```

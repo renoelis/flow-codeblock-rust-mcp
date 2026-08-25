@@ -32,15 +32,17 @@ description: 使用 Flow Codeblock Rust+Bun MCP 工具查询、校验、发布�
 ## 脚本变更流程
 
 1. 更新前先调用 `flow_get_script`，记录当前 `version`，并将其作为 `expected_version` 传给预览。
-2. 调用 `flow_preview_script_change`。创建必须提交代码和完整 `interface_doc`；更新代码时也必须提交完整文档，纯描述/IP 白名单变更可以省略文档，回滚不能与代码或文档同时提交。
+2. 调用 `flow_preview_script_change`。创建必须提交代码和完整 `interface_doc`，禁止补丁；更新代码或文档时可提交完整文档或 RFC 6902 `interface_doc_patch`，二者互斥，补丁必须带当前 `expected_version`，纯描述/IP 白名单变更可以省略文档，回滚不能与代码、完整文档或补丁同时提交。
 3. 只有用户明确确认后，才调用对应的 `flow_apply_*` 工具并传 `confirm: true`。
 4. 应用工具会再次读取当前版本，并把 `expected_version` 交给 Rust API 的事务级版本校验。版本变化、预览过期或预览内容校验失败时停止并要求重新读取、预览。
 
-`POST /flow/scripts/validate` 是只读统一校验接口。MCP 预览会先调用它检查代码、IP 白名单和接口文档；最终写入仍会再次校验，并在事务内处理 `expected_version` 冲突（HTTP 409）。
+`POST /flow/scripts/validate` 是只读统一校验接口。MCP 预览会先调用它检查代码、IP 白名单和完整接口文档或补丁；最终写入仍会再次透传补丁并校验当前文档和 `expected_version`，在事务内处理版本冲突（HTTP 409）。补丁预览不回显完整合并文档。
 
 ## 接口文档规则
 
-接口文档必须符合 `script-interface-doc.v1`，方法只能是 GET 或 POST，路径由服务端按脚本 ID 规范化。文档应独立作为 JSON 对象提交，不要把接口契约写进 JavaScript 注释，也不要写入真实 Token、密码、Cookie、Authorization 或其他敏感凭据。
+接口文档必须符合 `script-interface-doc.v1`，方法只能是 GET 或 POST，路径由服务端按脚本 ID 规范化。文档必须包含 `schema_version`、`title`、`summary`、`endpoint`、`request`、`responses`、`logic_description`；`endpoint.methods`、`endpoint.description` 必填；`request.query`、`request.headers` 必须存在，没有参数使用 `[]`；POST 必须有 `request.body`，且 `content_type`、`schema`、`example` 必填；每个查询参数和请求头必须有 `name`、`type`、`required`、`description`、`example`；每个响应必须有 `status`、`description`、`content_type`、`schema`、`example`。接口文档应独立作为 JSON 对象提交，不要把接口契约写进 JavaScript 注释，也不要写入真实 Token、密码、Cookie、Authorization 或其他敏感凭据。`endpoint.path` 创建时省略，更新时使用 `/flow/codeblock/<实际脚本ID>`；完整调用地址使用用户提供的域名 + `/flow/codeblock/{{脚本ID}}`。
+
+接口文档补丁最多 256 项，支持 `add`、`remove`、`replace`、`move`、`copy`、`test`，路径遵循 RFC 6901 JSON Pointer。完整 Schema 和补丁 Schema 位于 `references/script-interface-doc.schema.json` 与 `references/script-interface-doc.patch.schema.json`。
 
 生成或修改脚本时先阅读：
 
@@ -51,4 +53,4 @@ description: 使用 Flow Codeblock Rust+Bun MCP 工具查询、校验、发布�
 
 ## 代码生成规则
 
-用户代码必须使用 `input` 接收输入并通过顶层 `return` 或合法的 `qf_output` 返回结果；只使用允许模块，遵守代码、输入、结果和超时限制。向用户展示生成结果时，把可执行 JavaScript 和可提交的 `interface_doc` JSON 分成两个独立代码块。
+用户代码必须使用 `input` 接收输入并通过顶层 `return` 或合法的 `qf_output` 返回结果；只使用允许模块，遵守代码、输入、结果和超时限制。脚本模式内部生成可执行 JavaScript 和可提交的 `interface_doc` JSON，用于预览、校验和发布；最终默认只展示接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的 `script_url`，不主动回显 JavaScript 或原始 `interface_doc`，除非用户明确索要源码或原始文档。非脚本模式展示完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和 `execution_url`。

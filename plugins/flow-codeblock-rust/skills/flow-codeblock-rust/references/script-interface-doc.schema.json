@@ -3,23 +3,24 @@
   "$id": "https://flow-codeblock.local/schemas/script-interface-doc.v1.json",
   "title": "Flow Script Interface Document v1",
   "type": "object",
-  "required": ["schema_version", "endpoint"],
+  "required": ["schema_version", "title", "summary", "endpoint", "request", "responses", "logic_description"],
   "properties": {
     "schema_version": {"const": "script-interface-doc.v1"},
-    "title": {"type": "string", "maxLength": 200},
-    "summary": {"type": "string", "maxLength": 2000},
+    "title": {"type": "string", "minLength": 1, "maxLength": 200},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
     "endpoint": {
       "type": "object",
-      "required": ["methods"],
+      "required": ["methods", "description"],
       "properties": {
         "methods": {"type": "array", "items": {"enum": ["GET", "POST"]}, "minItems": 1, "maxItems": 2, "uniqueItems": true},
-        "path": {"type": "string", "pattern": "^/flow/codeblock/", "description": "可省略；服务端按当前脚本 ID 生成，传入值不会用于覆盖系统路径。"},
-        "description": {"type": "string", "maxLength": 4000}
+        "path": {"type": "string", "pattern": "^/flow/codeblock/", "description": "相对路径；创建时可省略，更新时写 /flow/codeblock/<实际脚本ID>。完整地址另行拼接用户提供的域名。"},
+        "description": {"type": "string", "minLength": 1, "maxLength": 4000}
       },
       "additionalProperties": false
     },
     "request": {
       "type": "object",
+      "required": ["query", "headers"],
       "properties": {
         "query": {"$ref": "#/$defs/parameters"},
         "headers": {"$ref": "#/$defs/parameters"},
@@ -30,9 +31,10 @@
     "responses": {
       "type": "array",
       "items": {"$ref": "#/$defs/response"},
+      "minItems": 1,
       "maxItems": 50
     },
-    "logic_description": {"type": "string", "maxLength": 20000},
+    "logic_description": {"type": "string", "minLength": 20, "maxLength": 20000},
     "usage_refs": {
       "type": "array",
       "items": {"$ref": "#/$defs/usage"},
@@ -45,7 +47,7 @@
       "maxItems": 100,
       "items": {
         "type": "object",
-        "required": ["name", "required", "description"],
+        "required": ["name", "type", "required", "description", "example"],
         "properties": {
           "name": {"type": "string", "minLength": 1, "maxLength": 200},
           "type": {"enum": ["string", "integer", "number", "boolean", "array", "object"]},
@@ -61,8 +63,9 @@
     },
     "body": {
       "type": "object",
+      "required": ["content_type", "schema", "example"],
       "properties": {
-        "content_type": {"type": "string", "maxLength": 200},
+        "content_type": {"const": "application/json"},
         "schema": {},
         "example": {}
       },
@@ -70,11 +73,11 @@
     },
     "response": {
       "type": "object",
-      "required": ["status", "description"],
+      "required": ["status", "description", "content_type", "schema", "example"],
       "properties": {
         "status": {"type": "integer", "minimum": 100, "maximum": 599},
-        "description": {"type": "string", "maxLength": 4000},
-        "content_type": {"type": "string", "maxLength": 200},
+        "description": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "content_type": {"const": "application/json"},
         "schema": {},
         "example": {}
       },

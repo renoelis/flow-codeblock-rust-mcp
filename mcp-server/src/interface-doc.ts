@@ -1,16 +1,23 @@
+import { z } from "zod";
+
 type JsonObject = Record<string, unknown>;
 
 export const interfaceDocRequiredFields = {
   document: ["schema_version", "title", "summary", "endpoint", "request", "responses", "logic_description"],
   endpoint: ["methods", "description"],
-  request: ["query", "headers", "body (POST only)"],
+  request: ["query", "headers", "body (required for POST; omit for GET-only)"],
   parameter: ["name", "type", "required", "description", "example"],
   body: ["content_type", "schema", "example"],
   response: ["status", "description", "content_type", "schema", "example"],
-  optional: ["endpoint.path (omit on create; actual path on update)", "usage_refs"],
+  optional: ["endpoint.path (omit on create; actual relative path on update)", "usage_refs"],
 };
 
 export const interfaceDocNestedRules = [
+  "title is the document title; summary is a one-sentence summary; endpoint.description explains the callable interface; logic_description explains the business logic.",
+  "request.query and request.headers are always present arrays; use [] when the interface has no query or header parameters.",
+  "Each query/header parameter requires name, type, required, description, and example. Do not use the internal input.query/input.header/input.body/input.cookies names in the caller-facing document.",
+  "For POST, request.body is required and content_type must be application/json; for GET-only documents, omit request.body.",
+  "Each response requires status, description, content_type, schema, and example. Describe every response shape returned by the script, including errors when applicable.",
   "Every JSON Schema node declares type. Object schemas use properties for fixed fields or a complete additionalProperties schema for dynamic keys.",
   "Every array schema has items. Object array items have complete properties, and every example item covers those properties.",
   "At every nesting level, schema properties and example fields cover each other. Optional properties still appear in the complete example.",
@@ -18,10 +25,56 @@ export const interfaceDocNestedRules = [
 ];
 
 export const interfaceDocInputDescription = [
-  "A complete script-interface-doc.v1 document is required when creating a script or changing code.",
+  "A complete script-interface-doc.v1 document is required when creating a script, changing code, or saving documentation.",
   `Required structure: ${Object.entries(interfaceDocRequiredFields).map(([key, fields]) => `${key}=[${fields.join(", ")}]`).join("; ")}.`,
   ...interfaceDocNestedRules,
+  "endpoint.path is relative and must be /flow/codeblock/<actual-script-id> on update; the final public URL is the caller-provided domain followed by /flow/codeblock/<script-id>.",
+  "Never include real tokens, passwords, cookies, Authorization values, or other credentials in the document or examples.",
 ].join(" ");
+
+const patchPathSchema = z.string().describe("RFC 6901 JSON Pointer 路径；数组路径使用当前 canonical 文档的索引。");
+const interfaceDocPatchOperationSchema = z.union([
+  z.object({ op: z.literal("add"), path: patchPathSchema, value: z.unknown() }).strict(),
+  z.object({ op: z.literal("remove"), path: patchPathSchema }).strict(),
+  z.object({ op: z.literal("replace"), path: patchPathSchema, value: z.unknown() }).strict(),
+  z.object({ op: z.literal("move"), from: patchPathSchema, path: patchPathSchema }).strict(),
+  z.object({ op: z.literal("copy"), from: patchPathSchema, path: patchPathSchema }).strict(),
+  z.object({ op: z.literal("test"), path: patchPathSchema, value: z.unknown() }).strict(),
+]).superRefine((operation, context) => {
+  if (["add", "replace", "test"].includes(operation.op) && !Object.prototype.hasOwnProperty.call(operation, "value")) {
+    context.addIssue({ code: "custom", path: ["value"], message: "value is required for this operation" });
+  }
+});
+
+export const interfaceDocPatchSchema = z.array(interfaceDocPatchOperationSchema)
+  .min(1)
+  .max(256)
+  .describe("RFC 6902 JSON Patch 操作数组；按顺序应用，不能与完整 interface_doc 同时提供。");
+
+export const interfaceDocPatchJsonSchema = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "https://flow-codeblock.local/schemas/script-interface-doc.patch.v1.json",
+  title: "script-interface-doc.v1 JSON Patch",
+  description: "RFC 6902 operations applied in order to an existing canonical script interface document.",
+  type: "array",
+  minItems: 1,
+  maxItems: 256,
+  items: {
+    oneOf: [
+      { type: "object", additionalProperties: false, required: ["op", "path", "value"], properties: { op: { const: "add" }, path: { type: "string" }, value: {} } },
+      { type: "object", additionalProperties: false, required: ["op", "path"], properties: { op: { const: "remove" }, path: { type: "string" } } },
+      { type: "object", additionalProperties: false, required: ["op", "path", "value"], properties: { op: { const: "replace" }, path: { type: "string" }, value: {} } },
+      { type: "object", additionalProperties: false, required: ["op", "from", "path"], properties: { op: { const: "move" }, from: { type: "string" }, path: { type: "string" } } },
+      { type: "object", additionalProperties: false, required: ["op", "from", "path"], properties: { op: { const: "copy" }, from: { type: "string" }, path: { type: "string" } } },
+      { type: "object", additionalProperties: false, required: ["op", "path", "value"], properties: { op: { const: "test" }, path: { type: "string" }, value: {} } },
+    ],
+  },
+} as const;
+
+export function assertInterfaceDocPatch(patch: unknown): void {
+  const parsed = interfaceDocPatchSchema.safeParse(patch);
+  if (!parsed.success) throw new Error(`interface_doc_patch 格式无效: ${parsed.error.message}`);
+}
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -91,6 +144,8 @@ function validateSchemaExampleCoverage(
           `${examplePath}.${key}`,
           issues,
         );
+      } else {
+        issues.push(`${schemaPath}.properties.${key} must be a JSON Schema object`);
       }
     }
   }
@@ -130,6 +185,8 @@ function validateParameters(value: unknown, path: string, issues: string[]): voi
     issues.push(`${path} must be present; use [] when there are no parameters`);
     return;
   }
+  if (value.length > 100) issues.push(`${path} must contain at most 100 parameters`);
+  const names = new Set<string>();
   value.forEach((parameter, index) => {
     const itemPath = `${path}[${index}]`;
     if (!isObject(parameter)) {
@@ -138,6 +195,11 @@ function validateParameters(value: unknown, path: string, issues: string[]): voi
     }
     requireText(parameter, "name", itemPath, issues);
     requireText(parameter, "description", itemPath, issues);
+    if (typeof parameter.name === "string") {
+      const name = parameter.name.trim();
+      if (name && names.has(name)) issues.push(`${itemPath}.name must be unique within ${path}`);
+      if (name) names.add(name);
+    }
     if (!["string", "integer", "number", "boolean", "array", "object"].includes(String(parameter.type))) {
       issues.push(`${itemPath}.type is unsupported`);
     }
@@ -183,6 +245,9 @@ export function interfaceDocCompletenessIssues(document: unknown, operation: "cr
       if (methods.some((method) => method !== "GET" && method !== "POST")) {
         issues.push("interface_doc.endpoint.methods may contain only GET or POST");
       }
+      if (new Set(methods).size !== methods.length) {
+        issues.push("interface_doc.endpoint.methods must not contain duplicates");
+      }
     }
     if (operation === "update") {
       if (typeof document.endpoint.path !== "string" || !document.endpoint.path.startsWith("/flow/codeblock/") || document.endpoint.path.includes("{script_id}")) {
@@ -209,6 +274,7 @@ export function interfaceDocCompletenessIssues(document: unknown, operation: "cr
   if (!Array.isArray(document.responses) || document.responses.length === 0) {
     issues.push("interface_doc.responses must contain at least one response");
   } else {
+    if (document.responses.length > 50) issues.push("interface_doc.responses must contain at most 50 responses");
     document.responses.forEach((response, index) => {
       const path = `interface_doc.responses[${index}]`;
       if (!isObject(response)) {
