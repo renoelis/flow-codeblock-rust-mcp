@@ -26,18 +26,18 @@ const result = (value: unknown) => ({
 });
 
 const serverInstructions = [
-  "这是 Flow Codeblock Rust+Bun MCP Server。除 flow_write_code 外，工具直接调用服务端 REST API；flow_write_code 只返回生成契约。不要猜测 REST 路径，也不要把 MCP 内部令牌放入业务参数。",
-  "代码运行于服务端 Bun 异步函数上下文，支持现代 JavaScript、async/await、Promise、箭头函数和顶层 return；默认最小超时 100ms、最大超时 15000ms，代码 65535 字节、输入 2MiB、结果 10MiB。",
-  "工具选择：flow_write_code 只生成代码与契约，不执行、不写库；flow_execute_code 只用于用户明确要求的未发布非脚本测试；flow_execute_script 只执行已发布脚本。",
-  "脚本读取、创建和更新流程：更新前先 flow_get_script 读取当前 version；创建必须提供完整 interface_doc，更新代码或文档可提供完整 interface_doc 或 RFC 6902 interface_doc_patch（二选一，补丁必须带 expected_version）；先 flow_preview_script_change，再在用户明确确认后 flow_apply_script_change(confirm=true)。文档单独修改使用 flow_preview_script_documentation -> flow_apply_script_documentation。",
-  "预览 ID 是一次性且有时效的；版本冲突、预览过期或校验失败时停止，重新读取并预览，不要重试旧 preview_id。flow_apply_* 永远需要 confirm=true。",
-  "script-interface-doc.v1 必须包含 schema_version、title、summary、endpoint、request、responses、logic_description。endpoint 必须包含 methods 和 description；request.query、request.headers 必须存在（没有参数用 []）；POST 必须有 request.body，GET-only 必须省略。增量文档使用最多 256 项的 add/remove/replace/move/copy/test JSON Patch，预览只回显操作数量和路径，不回显合并文档。",
-  "查询参数和请求头的每一项必须有 name、type、required、description、example。请求体和每个响应必须有 content_type=application/json、schema、example；每个响应还必须有 status、description。JSON Schema 的每个节点必须声明 type，数组必须有 items，对象和 example 必须互相覆盖。",
-  "接口文档 endpoint.path 只写相对路径：创建时省略，更新时写 /flow/codeblock/<实际脚本ID>。对外展示的完整调用地址必须使用用户提供的域名拼接 /flow/codeblock/{{脚本ID}}；不要把真实 Token、密码、Cookie 或 Authorization 值写入代码、文档、示例或 URL。",
-  "脚本模式输入来自 input.query、input.header、input.body、input.cookies；即时非脚本模式 POST /flow/codeblock 的 body.input 原样成为全局 input。代码默认使用顶层 return；只有事件式/异步流程或用户明确要求时才使用裸 qf_output 赋值，不能混用。",
-  "最终用户交付按模式区分：non_script 输出完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和完整 execution_url；script 默认不主动回显 JavaScript 或原始 interface_doc，只输出接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的完整 script_url，除非用户明确索要源码或原始文档。script 的代码与 interface_doc 仍必须内部提交给预览、校验和发布工具。",
-  "优先原生 JavaScript、URL/URLSearchParams、fetch 和 node:crypto；crypto-js 已移除，禁止生成该模块调用。禁止浏览器 API、定时器、动态模块加载、黑名单 Node 模块和危险标识符。Excel 仅允许 read-excel-file/node、read-excel-file/universal、write-excel-file/node、write-excel-file/universal 和 write-excel-file/utility。HTTP 请求必须检查状态并处理 JSON/文本/空响应，所有异步任务必须显式 await 或 return。",
-  "执行脚本时 method 只能是 GET 或 POST；MCP 认证、Cookie、CSRF、代理来源头和测试工具标识会被过滤。不要使用删除脚本、紧急恢复解锁或任意 HTTP 代理能力，本 MCP 不提供这些工具。",
+  "This is the Flow Codeblock Rust+Bun MCP server. All tools except flow_write_code call the server-side REST API; flow_write_code returns an authoring contract only. Do not guess REST paths or put MCP credentials in business arguments.",
+  "User code runs in a server-side Bun async function context with modern JavaScript, async/await, Promises, arrow functions, and top-level return. Default limits are 100 ms minimum timeout, 15,000 ms maximum timeout, 65,535 code bytes, 2 MiB input, and 10 MiB result.",
+  "Tool routing: flow_write_code only generates code and its contract; flow_execute_code is for explicitly requested tests of unpublished non-script code; flow_execute_script runs only published scripts.",
+  "Script workflow: read the current version with flow_get_script before updates; creates require a complete interface_doc, while code or document updates may use a complete interface_doc or an RFC 6902 interface_doc_patch (never both, and patches require expected_version). Preview with flow_preview_script_change, then call flow_apply_script_change(confirm=true) only after explicit user confirmation. Documentation-only changes use flow_preview_script_documentation -> flow_apply_script_documentation.",
+  "Preview IDs are single-use and time-limited. On a version conflict, expired preview, or validation failure, stop, read again, and preview again; never retry an old preview_id. Every flow_apply_* call requires confirm=true.",
+  "script-interface-doc.v1 requires schema_version, title, summary, endpoint, request, responses, and logic_description. endpoint requires methods and description; request.query and request.headers are required arrays (use [] when empty); POST requires request.body and GET-only documents must omit it. JSON Patch supports at most 256 add/remove/replace/move/copy/test operations; preview responses show operation counts and paths, not merged documents.",
+  "Every query parameter and request header requires name, type, required, description, and example. Request bodies and responses require content_type=application/json, schema, and example; every response also requires status and description. Every JSON Schema node declares type, and object schemas and examples must cover each other.",
+  "Keep endpoint.path relative: omit it on create and use /flow/codeblock/<actual-script-id> on update. Public call URLs use the caller-provided domain plus /flow/codeblock/{{script_id}}; never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.",
+  "Script input comes from input.query, input.header, input.body, and input.cookies; for immediate non-script POST /flow/codeblock, body.input becomes global input unchanged. Use top-level return by default; use a bare qf_output assignment only for event-style/asynchronous flows or when explicitly requested, never both.",
+  "Non-script delivery includes complete JavaScript, caller-facing invocation instructions, parameters/examples, logic, success/error examples, and execution_url. Script delivery omits JavaScript and raw interface_doc by default and includes invocation instructions, parameters/examples, logic, success/error examples, and the published script_url unless the user asks for source or raw documentation. Code and interface_doc remain internal preview/validation/publication inputs.",
+  "Prefer native JavaScript, URL/URLSearchParams, fetch, and node:crypto; crypto-js has been removed. Do not generate browser APIs, timers, dynamic module loading, blacklisted Node modules, or dangerous identifiers. Excel imports are limited to read-excel-file/node, read-excel-file/universal, write-excel-file/node, write-excel-file/universal, and write-excel-file/utility. Check HTTP status and handle JSON, text, and empty responses; await or return every async task.",
+  "Script execution accepts only GET or POST. MCP authentication, cookies, CSRF, proxy-source headers, and test-tool markers are filtered. There is no script deletion, emergency unlock, or arbitrary HTTP proxy tool; direct those requests to the web UI or controlled REST/operations flow.",
 ].join("\n");
 
 function encodedScriptId(scriptId: string): string {
@@ -149,28 +149,28 @@ function withApiErrors(handler: (...args: any[]) => any): (...args: any[]) => Pr
 }
 
 const documentationFields = {
-  document: z.unknown().optional().describe(`规范化的 script-interface-doc.v1 JSON 对象。与 raw_document、document_patch 三选一；保存或代码更新时必须完整。${interfaceDocInputDescription}`),
-  raw_document: z.string().optional().describe("待服务端解析的 JSON/OpenAPI 文档文本。与 document、document_patch 三选一；format=json 时按 JSON 解析。"),
-  format: z.literal("json").optional().describe("raw_document 的格式，目前只支持 json。"),
-  document_patch: interfaceDocPatchSchema.optional().describe("仅已有脚本使用的 RFC 6902 增量补丁；与 document、raw_document 三选一。"),
-  expected_version: z.number().int().positive().optional().describe("补丁的当前脚本版本；提交补丁时必填，必须来自刚读取的当前版本。"),
+  document: z.unknown().optional().describe(`Normalized script-interface-doc.v1 JSON. Choose exactly one of document, raw_document, or document_patch; complete documents are required for saves and code updates. ${interfaceDocInputDescription}`),
+  raw_document: z.string().optional().describe("JSON/OpenAPI document text for server parsing. Choose exactly one of document, raw_document, or document_patch; format=json parses JSON."),
+  format: z.literal("json").optional().describe("Format of raw_document; only json is supported."),
+  document_patch: interfaceDocPatchSchema.optional().describe("RFC 6902 patch for an existing script only. Choose exactly one of document, raw_document, or document_patch."),
+  expected_version: z.number().int().positive().optional().describe("Current script version for a patch; required with document_patch and must come from a fresh current-version read."),
 };
 
 const changeSchema = z.object({
-  operation: z.enum(["create", "update"]).describe("create 创建脚本；update 更新已有脚本。"),
-  script_id: z.string().min(1).optional().describe("更新目标脚本 ID。create 不得传入。"),
-  code: z.string().optional().describe("UTF-8 JavaScript 源码，与 code_base64 二选一。创建或修改代码时必填；代码只包含可执行 JavaScript。"),
-  code_base64: z.string().optional().describe("JavaScript 源码的非空 Base64，与 code 二选一。"),
-  description: z.string().optional().describe("脚本说明。可在不改代码时单独更新。"),
-  ip_whitelist: z.array(z.string()).nullable().optional().describe("来源 IP/CIDR 白名单。省略表示更新时保持原值；null 或 [] 表示清除限制。"),
+  operation: z.enum(["create", "update"]).describe("create adds a script; update changes an existing script."),
+  script_id: z.string().min(1).optional().describe("Target script ID for update; forbidden for create."),
+  code: z.string().optional().describe("UTF-8 JavaScript source, mutually exclusive with code_base64. Required when creating or changing code; provide executable JavaScript only."),
+  code_base64: z.string().optional().describe("Non-empty Base64-encoded JavaScript, mutually exclusive with code."),
+  description: z.string().optional().describe("Script description. Can be updated without changing code."),
+  ip_whitelist: z.array(z.string()).nullable().optional().describe("Source IP/CIDR allowlist. Omit on update to keep the current value; null or [] clears the restriction."),
   interface_doc: z.unknown().optional().describe(interfaceDocInputDescription),
-  interface_doc_patch: interfaceDocPatchSchema.optional().describe("仅 update 使用的 RFC 6902 JSON Patch；与完整 interface_doc 互斥，create 禁止使用。"),
-  rollback_to_version: z.number().int().positive().optional().describe("回滚到的历史版本号。只能与单独的 update 操作使用，不能和 code、interface_doc 或 interface_doc_patch 同时传入。"),
-  expected_version: z.number().int().positive().optional().describe("更新时必填的当前版本号。必须来自刚读取的 flow_get_script，用于并发冲突保护；create 不得传入。"),
+  interface_doc_patch: interfaceDocPatchSchema.optional().describe("RFC 6902 patch for update only; mutually exclusive with interface_doc and forbidden for create."),
+  rollback_to_version: z.number().int().positive().optional().describe("Historical version to restore. Use only as a standalone update and never with code, interface_doc, or interface_doc_patch."),
+  expected_version: z.number().int().positive().optional().describe("Required for update and must be the current_version from flow_get_script for concurrency protection; forbidden for create."),
 });
 
 const documentationSchema = z.object({
-  script_id: z.string().min(1).describe("目标脚本 ID，不是完整 URL；校验或预览现有脚本的文档。"),
+  script_id: z.string().min(1).describe("Target script ID, not a full URL; validate or preview its documentation."),
   ...documentationFields,
 }).superRefine((input, context) => {
   const supplied = [input.document, input.raw_document, input.document_patch].filter((value) => value !== undefined).length;
@@ -293,19 +293,20 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.3" },
+    { name: "flow-codeblock-rust", version: "0.1.4" },
     { instructions: serverInstructions },
   );
 
   server.registerTool(
     "flow_write_code",
     {
-      description: "生成代码实现契约，不写数据库、不发布脚本、不执行代码。mode=non_script 生成即时 POST /flow/codeblock 代码，最终交付包含完整 execution_url；mode=script 生成 GET/POST /flow/codeblock/{{script_id}} 代码，内部生成完整 script-interface-doc.v1 供预览、校验和发布，最终交付默认只展示接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和 script_url，除非用户明确索要源码或原始 interface_doc。脚本文档的 title、summary、endpoint.methods、endpoint.description、request、responses、logic_description 必须齐全；query/header 参数必须有 name/type/description/example，body 和 response 字段必须有 content_type/schema/example。需要展示用户指定的完整地址时可传入 base_url。",
+      title: "Get the Flow JavaScript authoring contract",
+      description: "Call this before writing Flow Codeblock JavaScript. It returns the mode-specific authoring contract and never writes the database, publishes a script, or executes code. Use non_script for immediate POST /flow/codeblock code and return a complete execution_url; use script for persistent GET/POST /flow/codeblock/{{script_id}} code with a complete script-interface-doc.v1 for preview, validation, and publication. Script delivery includes invocation instructions, parameters/examples, logic, success/error examples, and script_url rather than source or raw interface_doc unless requested. Set base_url only when a caller-facing URL template is needed.",
       inputSchema: {
-        mode: z.enum(["non_script", "script"]).describe("执行模式：non_script 为即时接口；script 为按脚本 ID 发布的 GET/POST 接口。未明确要求重定向时使用 non_script。"),
-        requirement: z.string().min(1).max(20_000).describe("用户的业务需求、输入字段、同步/异步要求和错误行为。只写与本次代码有关的需求。"),
-        input_example: z.unknown().optional().describe("业务输入示例。脚本模式下用于生成 request.body/schema/example；非脚本模式下用于 flow_execute_code 测试参数。不要放真实凭据。"),
-        include_full_schema: z.boolean().optional().describe("脚本模式是否在结果中附带完整 JSON Schema；默认 false。接口文档实例仍必须按必填字段生成。"),
+        mode: z.enum(["non_script", "script"]).describe("Generation mode. Use non_script for immediate, non-persistent execution; use script for a persistent GET/POST endpoint or HTTP redirects."),
+        requirement: z.string().min(1).max(20_000).describe("Complete business requirements, input fields, expected output, external APIs, synchronization/async needs, and error behavior. Include only requirements relevant to this code."),
+        input_example: z.unknown().optional().describe("Business input example. In script mode it helps generate request.body/schema/example; in non_script mode it supplies flow_execute_code test input. Never include real credentials."),
+        include_full_schema: z.boolean().optional().describe("Whether to include the complete JSON Schema in the response; defaults to false. The generated interface document still contains all required fields."),
         base_url: z.string().url().refine((value) => {
           try {
             const parsed = new URL(value);
@@ -316,7 +317,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
             return false;
           }
         }, "base_url must be an http(s) URL without credentials or control characters").optional()
-          .describe("可选的用户服务域名，例如 https://flow.example.com。仅用于输出完整调用地址，会拼接 /flow/codeblock/{{script_id}}；不得包含用户名、密码或 Token。"),
+          .describe("Optional caller service origin such as https://flow.example.com. Used only to render /flow/codeblock/{{script_id}}; credentials and control characters are forbidden."),
       },
     },
     async ({ mode, requirement, input_example, include_full_schema, base_url }) => {
@@ -328,15 +329,16 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_list_scripts",
     {
-      description: "只读分页查询脚本。默认使用 page/size 偏移分页；需要连续遍历时使用 pagination=cursor，首次不传 cursor，后续使用响应中的游标。不会创建、更新或执行脚本。",
+      title: "List scripts",
+      description: "Read-only paginated script listing. Use page/size offset pagination by default, or pagination=cursor for sequential traversal (omit cursor on the first call and use the returned cursor afterward). This tool does not create, update, or execute scripts.",
       inputSchema: {
-        page: z.number().int().positive().optional().describe("偏移分页页码，从 1 开始；使用游标分页时省略。"),
-        size: z.number().int().min(1).max(100).optional().describe("每页数量，1-100，默认由服务端决定。"),
-        keyword: z.string().optional().describe("按脚本关键词筛选。"),
-        sort: z.enum(["updated_at", "created_at", "code_length", "version"]).optional().describe("排序字段。游标分页只支持 updated_at、created_at、code_length。"),
-        order: z.enum(["asc", "desc"]).optional().describe("排序方向，默认由服务端决定。"),
-        pagination: z.literal("cursor").optional().describe("传 cursor 启用游标分页；首次调用不要传 cursor。"),
-        cursor: z.string().optional().describe("上一页返回的游标，仅与 pagination=cursor 一起使用。"),
+        page: z.number().int().positive().optional().describe("Offset page number starting at 1; omit when using cursor pagination."),
+        size: z.number().int().min(1).max(100).optional().describe("Items per page, 1-100; the server supplies the default."),
+        keyword: z.string().optional().describe("Optional keyword filter for scripts."),
+        sort: z.enum(["updated_at", "created_at", "code_length", "version"]).optional().describe("Sort field; cursor pagination supports updated_at, created_at, and code_length."),
+        order: z.enum(["asc", "desc"]).optional().describe("Sort direction; the server supplies the default."),
+        pagination: z.literal("cursor").optional().describe("Set to cursor to enable cursor pagination; omit cursor on the first call."),
+        cursor: z.string().optional().describe("Cursor returned by the previous page; use only with pagination=cursor."),
       },
     },
     withApiErrors(async ({ page, size, keyword, sort, order, pagination, cursor }) => {
@@ -355,10 +357,11 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_get_script",
     {
-      description: "只读读取脚本代码、元数据和版本信息。更新前必须先调用本工具并使用返回的 current_version 作为 flow_preview_script_change.expected_version。",
+      title: "Get a script",
+      description: "Read-only script code, metadata, and version information. Call this before updates and use the returned current_version as flow_preview_script_change.expected_version.",
       inputSchema: {
-        script_id: z.string().min(1).describe("脚本 ID，不是完整 URL。"),
-        version: z.number().int().min(0).optional().describe("可选历史版本号；省略时读取当前版本。"),
+        script_id: z.string().min(1).describe("Script ID, not a full URL."),
+        version: z.number().int().min(0).optional().describe("Optional historical version; omit to read the current version."),
       },
     },
     withApiErrors(async ({ script_id, version }) => {
@@ -370,10 +373,11 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_get_script_documentation",
     {
-      description: "只读读取当前或指定历史版本的 script-interface-doc.v1 接口文档。修改文档前先读取当前版本并保留版本号。",
+      title: "Get script interface documentation",
+      description: "Read-only script-interface-doc.v1 documentation for the current or a specified historical version. Read the current version before changing documentation and keep its version information.",
       inputSchema: {
-        script_id: z.string().min(1).describe("脚本 ID，不是完整 URL。"),
-        version: z.number().int().min(0).optional().describe("可选历史版本号；省略时读取当前文档。"),
+        script_id: z.string().min(1).describe("Script ID, not a full URL."),
+        version: z.number().int().min(0).optional().describe("Optional historical version; omit to read the current document."),
       },
     },
     withApiErrors(async ({ script_id, version }) => {
@@ -385,7 +389,8 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_validate_script_documentation",
     {
-      description: "只读校验并规范化指定脚本的接口文档，不写入数据库。完整 document、raw_document 和 RFC 6902 document_patch 三选一；补丁必须带 expected_version，响应不会用于发布确认。",
+      title: "Validate script interface documentation",
+      description: "Read-only validation and normalization for a script-interface-doc.v1 document; this tool never writes to the database. Provide exactly one of document, raw_document, or an RFC 6902 document_patch. Patches require expected_version, and this response cannot be used as publication confirmation.",
       inputSchema: documentationSchema.shape,
     },
     withApiErrors(async (input) => {
@@ -414,7 +419,8 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_preview_script_change",
     {
-      description: "预览脚本创建或更新，不写数据库。create 必须传 code/code_base64 和完整 interface_doc，且不得传 script_id/expected_version；update 必须传 script_id 和刚读取的 expected_version，修改代码时必须同时传完整 interface_doc 或 interface_doc_patch。预览成功后只能在用户明确确认时调用 flow_apply_script_change(confirm=true)。",
+      title: "Preview script change",
+      description: "Preview a script create or update without writing to the database. A create requires code or code_base64 plus a complete interface_doc and must not include script_id or expected_version. An update requires script_id and a freshly read expected_version; changing code also requires a complete interface_doc or interface_doc_patch. After a successful preview, call flow_apply_script_change(confirm=true) only after explicit user confirmation.",
       inputSchema: changeSchema.shape,
     },
     withApiErrors(async (input) => {
@@ -470,10 +476,11 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_apply_script_change",
     {
-      description: "应用 flow_preview_script_change 返回的一次性 preview_id。必须传 confirm=true；工具会再次检查版本并在成功或失败后销毁预览。发布成功时返回由 FLOW_CODEBLOCK_BASE_URL 生成的完整 script_url。不支持删除脚本。版本冲突时重新读取并预览。",
+      title: "Apply previewed script change",
+      description: "Apply the single-use preview_id returned by flow_preview_script_change. confirm=true is required; the tool rechecks the current version and destroys the preview after success or failure. A successful publication returns a complete script_url built from FLOW_CODEBLOCK_BASE_URL. Script deletion is not supported. On a version conflict, read the script and preview again.",
       inputSchema: {
-        preview_id: z.string().uuid().describe("最近一次脚本变更预览返回的 UUID；不能复用过期或已应用的 ID。"),
-        confirm: z.literal(true).describe("必须为 true，表示用户已明确确认写入。"),
+        preview_id: z.string().uuid().describe("UUID returned by the latest script-change preview; expired or already applied IDs cannot be reused."),
+        confirm: z.literal(true).describe("Must be true to confirm that the user explicitly approved the write."),
       },
     },
     withApiErrors(async ({ preview_id }) => {
@@ -506,7 +513,8 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_preview_script_documentation",
     {
-      description: "预览接口文档保存，不写数据库。先读取脚本当前版本；document、raw_document 和 document_patch 三选一，补丁必须带 expected_version，完整文档必须包含所有强制字段。成功后只有 flow_apply_script_documentation(confirm=true) 才会写入。",
+      title: "Preview documentation change",
+      description: "Preview a script-interface-doc.v1 save without writing to the database. Read the script's current version first. Provide exactly one of document, raw_document, or document_patch; patches require expected_version and complete documents must include every required field. After a successful preview, only flow_apply_script_documentation(confirm=true) can write the change.",
       inputSchema: documentationSchema.shape,
     },
     withApiErrors(async (input) => {
@@ -557,10 +565,11 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_apply_script_documentation",
     {
-      description: "应用 flow_preview_script_documentation 返回的一次性预览。必须传 confirm=true；工具会再次检查脚本版本并在成功或失败后销毁预览。发布成功时返回完整 script_url。版本冲突时重新读取、预览。",
+      title: "Apply previewed documentation change",
+      description: "Apply the single-use preview returned by flow_preview_script_documentation. confirm=true is required; the tool rechecks the script version and destroys the preview after success or failure. A successful save returns a complete script_url. On a version conflict, read the script and preview again.",
       inputSchema: {
-        preview_id: z.string().uuid().describe("最近一次接口文档预览返回的 UUID；不能复用过期或已应用的 ID。"),
-        confirm: z.literal(true).describe("必须为 true，表示用户已明确确认写入。"),
+        preview_id: z.string().uuid().describe("UUID returned by the latest documentation preview; expired or already applied IDs cannot be reused."),
+        confirm: z.literal(true).describe("Must be true to confirm that the user explicitly approved the write."),
       },
     },
     withApiErrors(async ({ preview_id }) => {
@@ -592,22 +601,22 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   );
 
   const lockSchema = {
-    script_id: z.string().min(1).describe("要锁定或解锁的脚本 ID。"),
-    owner_name: z.string().min(1).describe("锁定时设置、解锁时核对的所有者名称。"),
-    lock_password: z.string().min(6).describe("锁定口令；仅传给服务端，不会写入 MCP 预览或日志。"),
-    confirm: z.literal(true).describe("必须为 true，表示用户明确确认锁定或解锁。"),
+    script_id: z.string().min(1).describe("Script ID to lock or unlock."),
+    owner_name: z.string().min(1).describe("Owner name to set when locking and verify when unlocking."),
+    lock_password: z.string().min(6).describe("Lock password; sent only to the server and never stored in MCP previews or logs."),
+    confirm: z.literal(true).describe("Must be true to confirm that the user explicitly approved locking or unlocking."),
   };
 
   server.registerTool(
     "flow_lock_script",
-    { description: "锁定脚本以阻止并发写入。必须显式传入 confirm=true；锁定口令不会被 MCP 保存。锁定后脚本变更和文档保存可能被服务端拒绝。", inputSchema: lockSchema },
+    { title: "Lock script", description: "Lock a script to prevent concurrent writes. confirm=true is required; the lock password is never stored by MCP. Script changes and documentation saves may be rejected while the script is locked.", inputSchema: lockSchema },
     withApiErrors(async ({ script_id, owner_name, lock_password }) =>
       result(await api.post(`/flow/scripts/${encodedScriptId(script_id)}/lock`, { owner_name, lock_password }))),
   );
 
   server.registerTool(
     "flow_unlock_script",
-    { description: "使用所有者名称和口令正常解锁脚本。必须显式传入 confirm=true；锁定口令不会被 MCP 保存。不提供紧急恢复解锁。", inputSchema: lockSchema },
+    { title: "Unlock script", description: "Unlock a script using its owner name and password. confirm=true is required; the lock password is never stored by MCP. Emergency recovery unlock is not provided.", inputSchema: lockSchema },
     withApiErrors(async ({ script_id, owner_name, lock_password }) =>
       result(await api.post(`/flow/scripts/${encodedScriptId(script_id)}/unlock`, { owner_name, lock_password }))),
   );
@@ -616,14 +625,15 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_execute_script",
     {
-      description: "执行已发布脚本，仅用于用户明确要求测试或调用时。method 只能是 GET/POST；结果包含由 FLOW_CODEBLOCK_BASE_URL 和 script_id 生成的完整 script_url。query 数组会生成重复参数，POST 的 body 作为 JSON 发送。MCP 认证、Cookie、CSRF、代理来源头和测试工具标识会被过滤，qingcodeToken/qingcodeTimeout 不能作为业务参数传入。",
+      title: "Execute published script",
+      description: "Execute a published script only when the user explicitly requests a test or call. method must be GET or POST; the result includes a complete script_url built from FLOW_CODEBLOCK_BASE_URL and script_id. Array query values become repeated parameters, and a POST body is sent as JSON. MCP authentication, cookies, CSRF, proxy-source headers, and test-tool markers are filtered; qingcodeToken and qingcodeTimeout cannot be supplied as business parameters.",
       inputSchema: {
-        script_id: z.string().min(1).describe("已发布脚本 ID；工具会调用 /flow/codeblock/{script_id}。"),
-        method: z.enum(["GET", "POST"]).default("POST").describe("脚本请求方法，只能是 GET 或 POST；默认 POST。"),
-        query: z.record(z.string(), queryValueSchema).optional().describe("业务查询参数。值可为 string/number/boolean 或其数组；数组生成重复 query 参数。不要传 qingcodeToken/qingcodeTimeout。"),
-        headers: z.record(z.string(), z.string()).optional().describe("业务请求头。认证、Cookie、CSRF、Forwarded、X-Real-IP 等保留头会被过滤。"),
-        body: z.unknown().optional().describe("POST JSON 请求体；GET 不发送 body。不要把脚本模式业务 body 包装为 input 或 input.body。"),
-        timeout_ms: z.number().int().positive().optional().describe("执行超时毫秒数；只能通过此字段配置，不能在 query 中传 qingcodeTimeout。"),
+        script_id: z.string().min(1).describe("Published script ID; the tool calls /flow/codeblock/{script_id}."),
+        method: z.enum(["GET", "POST"]).default("POST").describe("Script request method, either GET or POST; defaults to POST."),
+        query: z.record(z.string(), queryValueSchema).optional().describe("Business query parameters. Values may be string/number/boolean or arrays of those types; arrays become repeated query parameters. Do not send qingcodeToken or qingcodeTimeout."),
+        headers: z.record(z.string(), z.string()).optional().describe("Business request headers. Authentication, cookies, CSRF, Forwarded, X-Real-IP, and other reserved headers are filtered."),
+        body: z.unknown().optional().describe("POST JSON request body; GET requests do not send a body. Do not wrap script-mode business data as input or input.body."),
+        timeout_ms: z.number().int().positive().optional().describe("Execution timeout in milliseconds; configure it only with this field, never with qingcodeTimeout in query."),
       },
     },
     withApiErrors(async ({ script_id, method, query, headers, body, timeout_ms }) => {
@@ -655,12 +665,13 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
   server.registerTool(
     "flow_execute_code",
     {
-      description: "执行未发布的非脚本 JavaScript，仅在用户明确要求测试时使用。结果包含完整 execution_url。请求固定为 POST /flow/codeblock，body.input 原样注入全局 input；代码和 code_base64 二选一。不会把 MCP 认证信息写入用户脚本输入，也不会创建或发布脚本。",
+      title: "Execute unpublished code",
+      description: "Execute unpublished non-script JavaScript only when the user explicitly requests a test. The result includes a complete execution_url. The request is always POST /flow/codeblock, and body.input is injected unchanged as global input; provide exactly one of code or code_base64. MCP authentication is never written into user input, and this tool does not create or publish scripts.",
       inputSchema: {
-        code: z.string().min(1).optional().describe("UTF-8 JavaScript 源码，与 code_base64 二选一。"),
-        code_base64: z.string().min(1).optional().describe("JavaScript 源码的非空 Base64，与 code 二选一。"),
-        input: z.unknown().optional().describe("注入全局 input 的业务数据，默认 {}。不要放 Token、密码、Cookie 或 Authorization 值。"),
-        timeout_ms: z.number().int().positive().optional().describe("本次测试执行超时毫秒数；必须在服务端允许的最小/最大范围内。"),
+        code: z.string().min(1).optional().describe("UTF-8 JavaScript source, mutually exclusive with code_base64."),
+        code_base64: z.string().min(1).optional().describe("Non-empty Base64-encoded JavaScript source, mutually exclusive with code."),
+        input: z.unknown().optional().describe("Business data injected into global input; defaults to {}. Do not include tokens, passwords, cookies, or Authorization values."),
+        timeout_ms: z.number().int().positive().optional().describe("Test execution timeout in milliseconds; it must be within the server's allowed range."),
       },
     },
     withApiErrors(async ({ code, code_base64, input, timeout_ms }) => {

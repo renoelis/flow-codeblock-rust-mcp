@@ -55,6 +55,60 @@ async function callTool(
 const json = (data: unknown, status = 200) =>
   Response.json({ success: true, data }, { status });
 
+const expectedToolNames = [
+  "flow_write_code",
+  "flow_list_scripts",
+  "flow_get_script",
+  "flow_get_script_documentation",
+  "flow_validate_script_documentation",
+  "flow_preview_script_change",
+  "flow_apply_script_change",
+  "flow_preview_script_documentation",
+  "flow_apply_script_documentation",
+  "flow_lock_script",
+  "flow_unlock_script",
+  "flow_execute_script",
+  "flow_execute_code",
+];
+
+const cjkPattern = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u;
+
+function collectStrings(value: unknown, output: string[] = []): string[] {
+  if (typeof value === "string") {
+    output.push(value);
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, output);
+  } else if (value && typeof value === "object") {
+    for (const item of Object.values(value)) collectStrings(item, output);
+  }
+  return output;
+}
+
+function assertParameterDescriptions(schema: unknown, path = "inputSchema", requireDescriptions = true): void {
+  if (!schema || typeof schema !== "object") return;
+  const record = schema as Record<string, unknown>;
+  const properties = record.properties;
+  if (properties && typeof properties === "object" && !Array.isArray(properties)) {
+    for (const [name, property] of Object.entries(properties as Record<string, unknown>)) {
+      expect(property, `${path}.properties.${name}`).toBeTruthy();
+      const propertyRecord = property as Record<string, unknown>;
+      if (requireDescriptions) {
+        expect(typeof propertyRecord.description, `${path}.properties.${name}.description`).toBe("string");
+        expect((propertyRecord.description as string).trim().length, `${path}.properties.${name}.description`).toBeGreaterThan(0);
+      }
+      assertParameterDescriptions(property, `${path}.properties.${name}`, false);
+    }
+  }
+  for (const key of ["items", "additionalProperties", "oneOf", "anyOf", "allOf"]) {
+    const nested = record[key];
+    if (Array.isArray(nested)) {
+      for (const item of nested) assertParameterDescriptions(item, `${path}.${key}`, false);
+    } else if (nested && typeof nested === "object") {
+      assertParameterDescriptions(nested, `${path}.${key}`, false);
+    }
+  }
+}
+
 describe("Flow Codeblock Rust MCP", () => {
   test("publishes server instructions and actionable tool metadata", async () => {
     const api = new FlowApiClient({ baseUrl: "http://127.0.0.1:3003", token: "test-token" });
@@ -65,20 +119,51 @@ describe("Flow Codeblock Rust MCP", () => {
     try {
       const instructions = client.getInstructions() ?? "";
       expect(instructions).toContain("flow_preview_script_change");
-      expect(instructions).toContain("/flow/codeblock/{{脚本ID}}");
+      expect(instructions).toContain("/flow/codeblock/{{script_id}}");
       expect(instructions).toContain("content_type=application/json");
-      expect(instructions).toContain("最终用户交付按模式区分");
-      expect(instructions).toContain("script 默认不主动回显 JavaScript 或原始 interface_doc");
+      expect(instructions).toContain("Non-script delivery includes complete JavaScript");
+      expect(instructions).toContain("Script delivery omits JavaScript and raw interface_doc by default");
       const listed = await client.listTools();
+      expect(listed.tools).toHaveLength(expectedToolNames.length);
+      expect(new Set(listed.tools.map((tool) => tool.name))).toEqual(new Set(expectedToolNames));
+      for (const tool of listed.tools) {
+        const metadata = tool as unknown as Record<string, unknown>;
+        expect(typeof metadata.title, `${tool.name}.title`).toBe("string");
+        expect((metadata.title as string).trim().length, `${tool.name}.title`).toBeGreaterThan(0);
+        expect(typeof metadata.description, `${tool.name}.description`).toBe("string");
+        expect((metadata.description as string).trim().length, `${tool.name}.description`).toBeGreaterThan(20);
+        assertParameterDescriptions(metadata.inputSchema, `${tool.name}.inputSchema`);
+        expect(collectStrings(metadata).some((value) => cjkPattern.test(value)), `${tool.name} metadata`).toBe(false);
+      }
+      expect(collectStrings(instructions).some((value) => cjkPattern.test(value))).toBe(false);
       const writeCode = listed.tools.find((tool) => tool.name === "flow_write_code");
-      expect(writeCode?.description).toContain("完整 script-interface-doc.v1");
-      expect(writeCode?.description).toContain("最终交付默认只展示接口调用说明");
+      expect(writeCode?.description).toContain("complete script-interface-doc.v1");
+      expect(writeCode?.description).toContain("Script delivery includes invocation instructions");
       expect(writeCode?.inputSchema.properties?.base_url).toBeDefined();
       const baseUrlSchema = writeCode?.inputSchema.properties?.base_url as { description?: string } | undefined;
       expect(baseUrlSchema?.description).toContain("/flow/codeblock/{{script_id}}");
     } finally {
       await client.close();
       await server.close();
+    }
+  });
+
+  test("keeps packaged documentation and metadata free of CJK product copy", async () => {
+    const documentationFiles = [
+      "../../README.md",
+      "../README.md",
+      "../../docs/USER_INSTALLATION.md",
+      "../../.mcp.json",
+      "../../plugins/flow-codeblock-rust/.mcp.json",
+      "../../plugins/flow-codeblock-rust/.codex-plugin/plugin.json",
+      "../../plugins/flow-codeblock-rust/skills/flow-codeblock-rust/SKILL.md",
+      "../../plugins/flow-codeblock-rust/skills/flow-codeblock-rust/references/api.md",
+      "../../plugins/flow-codeblock-rust/skills/flow-codeblock-rust/references/dangerous_patterns.json",
+      "../../plugins/flow-codeblock-rust/skills/flow-codeblock-rust/references/script-interface-doc.schema.json",
+    ];
+    for (const relativePath of documentationFiles) {
+      const content = await Bun.file(new URL(relativePath, import.meta.url)).text();
+      expect(cjkPattern.test(content), relativePath).toBe(false);
     }
   });
 
@@ -92,15 +177,15 @@ describe("Flow Codeblock Rust MCP", () => {
     const payload = JSON.parse(text) as { endpoint_url_template?: string };
     expect(payload.endpoint_url_template).toBe("https://flow.example.com/flow/codeblock/{{script_id}}");
     expect(payload.final_deliverables).toEqual([
-      "接口调用说明",
-      "请求参数及示例",
-      "执行逻辑",
-      "成功/错误输出示例",
-      "发布后的完整 script_url",
+      "Invocation instructions",
+      "Request parameters and examples",
+      "Execution logic",
+      "Success/error output examples",
+      "The complete published script_url",
     ]);
     expect(payload.internal_artifacts).toEqual([
-      "只含可执行代码的 JavaScript 代码块（提交预览、校验和发布；默认不回显）",
-      "独立且完整的 script-interface-doc.v1 JSON 对象（提交预览、校验和发布；默认不回显）",
+      "A JavaScript code block containing executable code only (submitted for preview, validation, and publication; not echoed by default)",
+      "A standalone complete script-interface-doc.v1 JSON object (submitted for preview, validation, and publication; not echoed by default)",
     ]);
 
     const nonScript = await callTool("http://127.0.0.1:3003", "flow_write_code", {

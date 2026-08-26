@@ -1,36 +1,36 @@
 # Flow Codeblock Rust MCP
 
-这是 Flow Codeblock Rust+Bun 服务的独立 MCP 与 Codex Plugin 仓库。MCP Server 通过本地 `stdio` 接收 MCP 请求，再调用 Flow Codeblock Rust REST API；用户 JavaScript 始终由服务端 Bun 执行器运行。
+This repository contains the standalone MCP server and Codex Plugin for the Flow Codeblock Rust+Bun service. The MCP server receives requests over local `stdio` and calls the Flow Codeblock Rust REST API; user JavaScript always runs in the server-side Bun executor.
 
-本仓库与已有的 `flow-codeblock-mcp` 分开维护。已有仓库面向另一套旧 API，本仓库对应当前 Rust API，npm 包名为 `flow-codeblock-rust-mcp`。
+This project is maintained separately from the existing `flow-codeblock-mcp` repository. That repository targets a different legacy API. This project targets the current Rust API and publishes the `flow-codeblock-rust-mcp` npm package.
 
-## 安装
+## Installation
 
-需要 Bun `1.4.0` 或更高版本：
+Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.3
+bunx --bun flow-codeblock-rust-mcp@0.1.4
 ```
 
-启动前由 MCP 客户端注入以下环境变量：
+The MCP client must inject these environment variables before startup:
 
 ```text
 FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
-FLOW_CODEBLOCK_TOKEN=<由服务管理员签发的访问令牌>
+FLOW_CODEBLOCK_TOKEN=<TOKEN_ISSUED_BY_YOUR_SERVICE_ADMIN>
 ```
 
-`FLOW_CODEBLOCK_BASE_URL` 默认是 `http://127.0.0.1:3003`。生产环境请使用 HTTPS 地址，并通过客户端密钥管理保存 Token，不要把真实 Token 写入仓库、截图、命令行历史或公开配置。
+`FLOW_CODEBLOCK_BASE_URL` defaults to `http://127.0.0.1:3003`. Use an HTTPS origin in production and store the token through the client's secret management. Never commit a real token to the repository, screenshots, shell history, or public configuration.
 
-## stdio 配置
+## Stdio configuration
 
-支持本地 stdio MCP 的客户端可以使用：
+Clients that support local stdio MCP servers can use:
 
 ```json
 {
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.3"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.4"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -40,11 +40,11 @@ FLOW_CODEBLOCK_TOKEN=<由服务管理员签发的访问令牌>
 }
 ```
 
-地址是 Rust REST API 地址，不是远程 MCP 地址。本版本只承诺本地 stdio，不提供远程 HTTP、SSE 或 Streamable HTTP 入口。
+The base URL is the Rust REST API origin, not a remote MCP URL. This release provides local stdio only; it does not expose remote HTTP, SSE, or Streamable HTTP transports.
 
 ## Codex Plugin
 
-插件目录为：
+The plugin files are:
 
 ```text
 plugins/flow-codeblock-rust/.codex-plugin/plugin.json
@@ -52,47 +52,47 @@ plugins/flow-codeblock-rust/.mcp.json
 plugins/flow-codeblock-rust/skills/flow-codeblock-rust/SKILL.md
 ```
 
-Skill 要求脚本写入遵循“读取当前版本 -> 预览 -> 服务端校验 -> 用户明确确认 -> 应用”的流程。更新时会使用 `expected_version` 保护并发修改；接口文档支持 RFC 6902 `interface_doc_patch` 增量提交，补丁与完整文档互斥，创建脚本禁止补丁。版本冲突、预览过期或校验失败时必须重新读取并预览。
+The Skill requires the workflow `read current version -> preview -> server validation -> explicit user confirmation -> apply`. Updates use `expected_version` for concurrency protection. Interface documentation supports RFC 6902 `interface_doc_patch`; patches are mutually exclusive with complete documents and are forbidden for creates. On a version conflict, expired preview, or validation failure, read again and create a new preview.
 
-最终用户交付按模式区分：`non_script` 输出完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和完整 `execution_url`；`script` 默认不主动回显 JavaScript 或原始 `interface_doc`，只输出接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的完整 `script_url`。脚本代码与 `interface_doc` 仍由 MCP 内部用于预览、校验和发布，除非用户明确索要源码或原始文档。
+Final delivery is mode-specific. `non_script` returns complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. `script` omits JavaScript and raw `interface_doc` by default and returns invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`. Script code and `interface_doc` remain internal inputs to MCP preview, validation, and publication unless the user explicitly requests source or raw documentation.
 
-## 工具边界
+## Tool boundaries
 
-代码契约使用当前 Rust+Bun 模块白名单：`crypto-js` 已移除，加密应使用 `node:crypto`。Excel 仅允许 `read-excel-file/node`、`read-excel-file/universal`、`write-excel-file/node`、`write-excel-file/universal` 和 `write-excel-file/utility` 入口；这些模块由服务端共享重型执行池承载。
+The code contract follows the current Rust+Bun module allowlist. `crypto-js` has been removed; use `node:crypto` for cryptography. Excel imports are limited to `read-excel-file/node`, `read-excel-file/universal`, `write-excel-file/node`, `write-excel-file/universal`, and `write-excel-file/utility`; these modules run in the server's shared heavy execution pool.
 
-MCP 提供脚本列表、当前/历史版本读取、接口文档读取与校验、代码和文档的预览/确认保存、锁定/解锁、已发布脚本执行，以及未发布代码测试。管理请求使用 `Authorization: Bearer <token>`；执行已发布脚本时不会把 MCP Token 转发给用户脚本。
+MCP provides script listing, current and historical version reads, documentation reads and validation, preview/confirmation saves for code and documentation, locking/unlocking, published-script execution, and unpublished-code tests. Management requests use `Authorization: Bearer <token>`. The MCP token is not forwarded when executing a published script.
 
-MCP 明确不提供脚本删除、紧急恢复解锁、Token 查询或管理、执行统计、所有权转移和任意 HTTP 代理工具。用户传入的 Authorization、accessToken、Cookie、CSRF、测试工具标识、MCP 标识以及 `Forwarded`/`X-Real-IP`/`X-Forwarded-*` 等代理来源头会被过滤，请求统一使用 30 秒超时。
+MCP deliberately does not provide script deletion, emergency recovery unlock, token lookup or management, execution statistics, ownership transfer, or arbitrary HTTP proxy tools. User-supplied Authorization, accessToken, Cookie, CSRF, test-tool, MCP, `Forwarded`, `X-Real-IP`, and `X-Forwarded-*` headers are filtered. Requests use a 30-second timeout.
 
-## 仅使用 MCP 时的工具契约
+## Contract without the Skill
 
-MCP Server 会在初始化响应中通过 `instructions` 提供完整的工具选择和调用流程，不要求客户端额外安装 Skill。创建或修改代码时，接口文档必须包含 `schema_version`、`title`、`summary`、`endpoint`、`request`、`responses`、`logic_description`；接口方式和接口说明位于 `endpoint.methods`、`endpoint.description`。`request.query`、`request.headers` 始终存在，没有参数使用 `[]`；POST 还必须填写 body 的 `content_type`、`schema`、`example`。每个查询参数、请求头必须填写 `name`、`type`、`description`、`example`（以及 `required`），每个响应必须填写 `status`、`description`、`content_type`、`schema`、`example`。
+The MCP server sends complete tool selection, preview/confirmation, runtime, and documentation rules in the initialization `instructions`, so clients do not need to install the Skill. When creating or changing code, `interface_doc` must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint.methods` and `endpoint.description` describe the interface. `request.query` and `request.headers` are always present; use `[]` when empty. POST documents also require `body.content_type`, `body.schema`, and `body.example`. Every query/header parameter requires `name`, `type`, `description`, `example`, and `required`; every response requires `status`, `description`, `content_type`, `schema`, and `example`.
 
-脚本调用地址由用户提供的服务域名拼接 `/flow/codeblock/{{脚本ID}}`。接口文档的 `endpoint.path` 只保留相对路径：创建时省略，更新时填写 `/flow/codeblock/<实际脚本ID>`；不要将真实 Token、密码、Cookie 或 Authorization 写入代码、文档、示例或 URL。
+Script URLs are built from the caller-provided service origin and `/flow/codeblock/{{script_id}}`. `endpoint.path` is relative: omit it when creating and use `/flow/codeblock/<actual-script-id>` when updating. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
 
-补丁最多包含 256 个 `add/remove/replace/move/copy/test` 操作，路径使用 JSON Pointer；预览结果只展示操作数量、路径、警告和版本，不回显合并后的完整文档。
+Patches contain at most 256 `add/remove/replace/move/copy/test` operations and use JSON Pointer paths. Preview results show operation counts, paths, warnings, and version information; they do not echo the merged document.
 
-## 目录结构
+## Repository layout
 
 ```text
-mcp-server/                         # npm 包 flow-codeblock-rust-mcp
-plugins/flow-codeblock-rust/        # Codex Plugin 与 Skill
-docs/USER_INSTALLATION.md           # 客户端安装说明
+mcp-server/                         # npm package flow-codeblock-rust-mcp
+plugins/flow-codeblock-rust/        # Codex Plugin and Skill
+docs/USER_INSTALLATION.md           # Client installation guide
 ```
 
-## 本地开发
+## Local development
 
 ```bash
 cd mcp-server
-bun install
+bun install --frozen-lockfile
 bun run check
 bun test
 npm pack --dry-run
 npm publish --dry-run --access public
 ```
 
-MCP 只依赖服务端 REST API。Rust API 契约、接口文档 Schema、模块白名单和危险模式参考文件保存在 `plugins/flow-codeblock-rust/skills/flow-codeblock-rust/references/`，服务端实现变更时需要同步评估。
+MCP depends only on the server-side REST API. The Rust API contract, interface-documentation schema, module allowlist, and dangerous-pattern reference files live under `plugins/flow-codeblock-rust/skills/flow-codeblock-rust/references/` and should be reviewed whenever the server implementation changes.
 
-## 许可证
+## License
 
-MIT，见 [LICENSE](LICENSE)。
+MIT; see [LICENSE](LICENSE).

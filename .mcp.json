@@ -2,9 +2,9 @@
   "mcpServers": {
     "flow-codeblock-rust": {
       "title": "Flow Codeblock Rust+Bun",
-      "description": "通过当前 Flow Codeblock Rust API 管理和执行脚本。",
+      "description": "Manage and execute scripts through the current Flow Codeblock Rust API.",
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.0"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.4"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "http://127.0.0.1:3003"
       }

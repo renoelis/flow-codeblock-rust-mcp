@@ -1,39 +1,39 @@
 {
-  "_comment": "危险关键词与成员模式列表；宿主机修改后重启服务生效，不支持接口热重载",
+  "_comment": "Dangerous identifier and member-pattern list; host changes take effect after a service restart and are not hot-reloaded through an API.",
   "identifiers": {
-    "Function": "检测到 Function",
-    "Proxy": "检测到 Proxy",
-    "__proto__": "检测到 __proto__",
-    "child_process": "检测到 child_process",
-    "eval": "检测到 eval",
-    "exec": "检测到 exec",
-    "execFile": "检测到 execFile",
-    "execSync": "检测到 execSync",
-    "exports": "禁止使用 exports（CommonJS module/exports 已禁用）",
-    "fork": "检测到 fork",
-    "module": "禁止使用 module（CommonJS module/exports 已禁用）",
-    "spawn": "检测到 spawn",
-    "setImmediate": "检测到 setImmediate",
-    "setInterval": "检测到 setInterval",
-    "setTimeout": "检测到 setTimeout"
+    "Function": "Detected Function",
+    "Proxy": "Detected Proxy",
+    "__proto__": "Detected __proto__",
+    "child_process": "Detected child_process",
+    "eval": "Detected eval",
+    "exec": "Detected exec",
+    "execFile": "Detected execFile",
+    "execSync": "Detected execSync",
+    "exports": "exports is forbidden (CommonJS module/exports are disabled)",
+    "fork": "Detected fork",
+    "module": "module is forbidden (CommonJS module/exports are disabled)",
+    "spawn": "Detected spawn",
+    "setImmediate": "Detected setImmediate",
+    "setInterval": "Detected setInterval",
+    "setTimeout": "Detected setTimeout"
   },
   "members": {
     "Object": {
-      "getPrototypeOf": "检测到 Object.getPrototypeOf",
-      "setPrototypeOf": "检测到 Object.setPrototypeOf"
+      "getPrototypeOf": "Detected Object.getPrototypeOf",
+      "setPrototypeOf": "Detected Object.setPrototypeOf"
     },
     "Reflect": {
-      "apply": "检测到 Reflect.apply",
-      "construct": "检测到 Reflect.construct",
-      "get": "检测到 Reflect.get",
-      "set": "检测到 Reflect.set"
+      "apply": "Detected Reflect.apply",
+      "construct": "Detected Reflect.construct",
+      "get": "Detected Reflect.get",
+      "set": "Detected Reflect.set"
     },
     "process": {
-      "_linkedBinding": "检测到 process._linkedBinding",
-      "binding": "检测到 process.binding",
-      "dlopen": "检测到 process.dlopen",
-      "exit": "检测到 process.exit",
-      "kill": "检测到 process.kill"
+      "_linkedBinding": "Detected process._linkedBinding",
+      "binding": "Detected process.binding",
+      "dlopen": "Detected process.dlopen",
+      "exit": "Detected process.exit",
+      "kill": "Detected process.kill"
     }
   }
 }

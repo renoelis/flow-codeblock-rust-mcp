@@ -1,32 +1,32 @@
 # flow-codeblock-rust-mcp
 
-Flow Codeblock Rust+Bun 的本地 stdio MCP Server。它只调用服务端 Rust REST API，不在用户电脑执行脚本；用户 JavaScript 仍由服务端 Bun 执行器运行。
+Local stdio MCP server for Flow Codeblock Rust+Bun. It calls the server-side Rust REST API and never executes scripts on the user's machine; user JavaScript runs in the server-side Bun executor.
 
-## 安装和启动
+## Installation and startup
 
-需要 Bun 1.4.0 或更高版本：
+Bun 1.4.0 or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.3
+bunx --bun flow-codeblock-rust-mcp@0.1.4
 ```
 
-配置环境变量：
+Configure the environment:
 
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
 ```
 
-`FLOW_CODEBLOCK_TOKEN` 是当前 Flow Codeblock 服务的内部访问令牌。生产部署应使用 HTTPS 地址，不要将真实 Token 写入仓库、npm 包、命令行历史或公开客户端配置。
+`FLOW_CODEBLOCK_TOKEN` is the internal access token for the current Flow Codeblock service. Use HTTPS in production and never put a real token in the repository, npm package, shell history, or public client configuration.
 
-## stdio 配置
+## Stdio configuration
 
 ```json
 {
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.3"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.4"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_INTERNAL_ACCESS_TOKEN>"
@@ -36,28 +36,28 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
 }
 ```
 
-## 工具边界
+## Tool boundaries
 
-代码契约使用当前 Rust+Bun 模块白名单：`crypto-js` 已移除，加密应使用 `node:crypto`。Excel 仅允许 `read-excel-file/node`、`read-excel-file/universal`、`write-excel-file/node`、`write-excel-file/universal` 和 `write-excel-file/utility` 入口；这些模块由服务端共享重型执行池承载。
+The code contract follows the current Rust+Bun module allowlist. `crypto-js` has been removed; use `node:crypto` for cryptography. Excel imports are limited to `read-excel-file/node`, `read-excel-file/universal`, `write-excel-file/node`, `write-excel-file/universal`, and `write-excel-file/utility`; these modules run in the server's shared heavy execution pool.
 
-工具覆盖代码生成、未发布代码测试、脚本列表、版本读取、接口文档校验/预览/保存、脚本创建/更新、锁定/解锁和已发布脚本执行。创建或代码更新可提交完整接口文档或 RFC 6902 `interface_doc_patch`；预览会调用 `/flow/scripts/validate`，应用时会再次透传补丁并使用事务级 `expected_version` 检测并发冲突。所有脚本写操作需要预览后显式 `confirm: true`。
+The tools cover code-contract generation, unpublished-code tests, script listing, version reads, documentation validation/preview/save, script creation/update, locking/unlocking, and published-script execution. Creates and code updates can submit a complete interface document or RFC 6902 `interface_doc_patch`; preview calls `/flow/scripts/validate`, and apply re-submits patches with transactional `expected_version` conflict detection. Every script write requires a preview and explicit `confirm: true`.
 
-最终用户交付按模式区分：`non_script` 输出完整 JavaScript、接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和完整 `execution_url`；`script` 默认不主动回显 JavaScript 或原始 `interface_doc`，只输出接口调用说明、请求参数及示例、执行逻辑、成功/错误输出示例和发布后的完整 `script_url`。脚本代码与 `interface_doc` 仍由 MCP 内部用于预览、校验和发布，除非用户明确索要源码或原始文档。
+Final delivery is mode-specific. `non_script` returns complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. `script` omits JavaScript and raw `interface_doc` by default and returns invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`. Script code and `interface_doc` remain internal inputs to MCP preview, validation, and publication unless the user explicitly requests source or raw documentation.
 
-MCP 不提供脚本删除、紧急恢复解锁、Token 查询、执行统计、所有权转移或任意 HTTP 代理工具。当前版本只提供本地 stdio 连接，不提供远程 HTTP、SSE 或 Streamable HTTP 连接。
+MCP does not provide script deletion, emergency recovery unlock, token lookup, execution statistics, ownership transfer, or arbitrary HTTP proxy tools. This release provides local stdio only; it does not expose remote HTTP, SSE, or Streamable HTTP transports.
 
-## MCP 工具契约
+## MCP tool contract
 
-服务器初始化时会通过 MCP `instructions` 下发完整的工具选择、脚本预览/确认流程、代码运行时约束和接口文档规则，因此不依赖额外 Skill 也可以直接调用工具。客户端应优先使用工具 description 和 input schema 中的字段说明，不要通过试错猜测参数。
+At initialization the server sends complete tool selection, preview/confirmation, runtime, and interface-documentation rules through MCP `instructions`. Clients should prefer tool descriptions and input-schema field descriptions instead of guessing parameters through trial and error.
 
-接口文档必须包含 `schema_version`、`title`、`summary`、`endpoint`、`request`、`responses`、`logic_description`；`endpoint` 必须有 `methods` 和 `description`，`request.query` 与 `request.headers` 必须存在（没有参数时传 `[]`）。POST 还必须提供 `request.body`，其 `content_type`、`schema`、`example` 均必填；每个响应的 `status`、`description`、`content_type`、`schema`、`example` 均必填；查询参数和请求头的每个字段必须有 `name`、`type`、`required`、`description`、`example`。
+Interface documents must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint` requires `methods` and `description`; `request.query` and `request.headers` must exist (use `[]` when empty). POST documents also require `request.body` with `content_type`, `schema`, and `example`. Every response requires `status`, `description`, `content_type`, `schema`, and `example`; every query/header parameter requires `name`, `type`, `required`, `description`, and `example`.
 
-接口文档的 `endpoint.path` 使用相对路径：创建时省略，更新时使用 `/flow/codeblock/<实际脚本ID>`。对外展示完整请求地址时，将用户提供的服务域名与 `/flow/codeblock/{{脚本ID}}` 拼接；不要把真实令牌、密码、Cookie 或 Authorization 值写入代码、文档、示例或 URL。
+`endpoint.path` is relative: omit it when creating and use `/flow/codeblock/<actual-script-id>` when updating. Public request URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
 
-`interface_doc_patch` / `document_patch` 必须携带正整数 `expected_version`，最多 256 个 `add/remove/replace/move/copy/test` 操作。补丁预览仅返回操作数量、JSON Pointer 路径、警告和版本信息，不返回完整合并文档。
+`interface_doc_patch` and `document_patch` require a positive integer `expected_version` and support at most 256 `add/remove/replace/move/copy/test` operations. Patch previews return operation counts, JSON Pointer paths, warnings, and version information, never the complete merged document.
 
-## 安全行为
+## Security behavior
 
-- 管理请求使用 `Authorization: Bearer`，执行已发布脚本时不会把 MCP Token 转发到脚本输入。
-- 用户传入的 Authorization、accessToken、Cookie、CSRF、测试工具标识和 `Forwarded`/`X-Real-IP`/`X-Forwarded-*` 等代理来源头会被过滤。
-- 请求有 30 秒超时，预览有 10 分钟 TTL 和 256 条上限。
+- Management requests use `Authorization: Bearer`; the MCP token is not forwarded into published-script input.
+- User-supplied Authorization, accessToken, Cookie, CSRF, test-tool, MCP, `Forwarded`, `X-Real-IP`, and `X-Forwarded-*` headers are filtered.
+- Requests have a 30-second timeout; previews have a 10-minute TTL and a 256-entry limit.

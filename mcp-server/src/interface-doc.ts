@@ -32,7 +32,7 @@ export const interfaceDocInputDescription = [
   "Never include real tokens, passwords, cookies, Authorization values, or other credentials in the document or examples.",
 ].join(" ");
 
-const patchPathSchema = z.string().describe("RFC 6901 JSON Pointer 路径；数组路径使用当前 canonical 文档的索引。");
+const patchPathSchema = z.string().describe("RFC 6901 JSON Pointer path; array paths use indexes from the current canonical document.");
 const interfaceDocPatchOperationSchema = z.union([
   z.object({ op: z.literal("add"), path: patchPathSchema, value: z.unknown() }).strict(),
   z.object({ op: z.literal("remove"), path: patchPathSchema }).strict(),
@@ -49,7 +49,7 @@ const interfaceDocPatchOperationSchema = z.union([
 export const interfaceDocPatchSchema = z.array(interfaceDocPatchOperationSchema)
   .min(1)
   .max(256)
-  .describe("RFC 6902 JSON Patch 操作数组；按顺序应用，不能与完整 interface_doc 同时提供。");
+  .describe("RFC 6902 JSON Patch operation array; operations are applied in order and cannot be provided with a complete interface_doc.");
 
 export const interfaceDocPatchJsonSchema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -73,7 +73,7 @@ export const interfaceDocPatchJsonSchema = {
 
 export function assertInterfaceDocPatch(patch: unknown): void {
   const parsed = interfaceDocPatchSchema.safeParse(patch);
-  if (!parsed.success) throw new Error(`interface_doc_patch 格式无效: ${parsed.error.message}`);
+  if (!parsed.success) throw new Error(`Invalid interface_doc_patch format: ${parsed.error.message}`);
 }
 
 function isObject(value: unknown): value is JsonObject {

@@ -13,7 +13,7 @@
       "required": ["methods", "description"],
       "properties": {
         "methods": {"type": "array", "items": {"enum": ["GET", "POST"]}, "minItems": 1, "maxItems": 2, "uniqueItems": true},
-        "path": {"type": "string", "pattern": "^/flow/codeblock/", "description": "相对路径；创建时可省略，更新时写 /flow/codeblock/<实际脚本ID>。完整地址另行拼接用户提供的域名。"},
+        "path": {"type": "string", "pattern": "^/flow/codeblock/", "description": "Relative path; omit it when creating and use /flow/codeblock/<actual-script-id> when updating. Build the complete URL separately from the caller-provided domain."},
         "description": {"type": "string", "minLength": 1, "maxLength": 4000}
       },
       "additionalProperties": false
