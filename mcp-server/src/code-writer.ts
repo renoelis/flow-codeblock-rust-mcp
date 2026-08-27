@@ -144,6 +144,7 @@ export function codeWriterContext(
       source_location: {
         fields: ["line", "column", "lineContent"],
         indexing: "line and column are one-based",
+        message_policy: "message contains the concise rule or runtime reason; source location is not duplicated in message",
         included_for: [
           "pre-execution syntax errors",
           "dangerous-pattern policy failures",

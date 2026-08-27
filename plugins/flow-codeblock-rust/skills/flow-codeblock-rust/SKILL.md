@@ -38,7 +38,7 @@ This Skill works with the plugin's local stdio MCP server. The MCP server calls 
 
 `POST /flow/scripts/validate` is the read-only unified validation endpoint. MCP previews use it for code, IP allowlists, complete documents, and patches. Final writes re-submit patches and validate the current document and `expected_version` in a transaction; version conflicts return HTTP 409. Patch previews never echo the complete merged document.
 
-Execution errors preserve the server's error type, message, and stack when available. Verified user-code locations are returned in `error.details.line`, `error.details.column`, and `error.details.lineContent` using one-based line and column numbers; details are omitted when the location cannot be verified. Direct execution uses `SyntaxError` for parse failures and `SecurityError` for execution policy failures; these user-code failures return HTTP 422 with `retryable: false`. Script-save validation may retain `ValidationError` for policy failures.
+Execution errors preserve the server's error type, concise message, and stack when available. Verified user-code locations are returned in `error.details.line`, `error.details.column`, and `error.details.lineContent` using one-based line and column numbers; details are omitted when the location cannot be verified. Security-policy messages contain only the concise rule reason; source location, matched text, and source line are not duplicated in `message`. Direct execution uses `SyntaxError` for parse failures and `SecurityError` for execution policy failures; these user-code failures return HTTP 422 with `retryable: false`. Script-save validation may retain `ValidationError` for policy failures.
 
 ## Interface-documentation rules
 

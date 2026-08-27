@@ -28,7 +28,7 @@ const result = (value: unknown) => ({
 const serverInstructions = [
   "This is the Flow Codeblock Rust+Bun MCP server. All tools except flow_write_code call the server-side REST API; flow_write_code returns an authoring contract only. Do not guess REST paths or put MCP credentials in business arguments.",
   "User code runs in a server-side Bun async function context with modern JavaScript, async/await, Promises, arrow functions, and top-level return. Default limits are 100 ms minimum timeout, 15,000 ms maximum timeout, 65,535 code bytes, 2 MiB input, and 10 MiB result.",
-  "User-code execution failures preserve the server error type, message, and stack when available. Verified source locations are in error.details with one-based line, column, and lineContent; details are omitted when the location cannot be verified. Direct execution uses SyntaxError for parse failures and SecurityError for execution policy failures; these user-code failures are non-retryable HTTP 422 responses. Script-save validation may retain ValidationError for policy failures.",
+  "User-code execution failures preserve the server error type, concise message, and stack when available. Verified source locations are in error.details with one-based line, column, and lineContent; details are omitted when the location cannot be verified. Security-policy messages contain the rule reason only; do not parse source locations from message or expect duplicated location text. Direct execution uses SyntaxError for parse failures and SecurityError for execution policy failures; these user-code failures are non-retryable HTTP 422 responses. Script-save validation may retain ValidationError for policy failures.",
   "Tool routing: flow_write_code only generates code and its contract; flow_execute_code is for explicitly requested tests of unpublished non-script code; flow_execute_script runs only published scripts.",
   "Script workflow: read the current version with flow_get_script before updates; creates require a complete interface_doc, while code or document updates may use a complete interface_doc or an RFC 6902 interface_doc_patch (never both, and patches require expected_version). Preview with flow_preview_script_change, then call flow_apply_script_change(confirm=true) only after explicit user confirmation. Documentation-only changes use flow_preview_script_documentation -> flow_apply_script_documentation.",
   "Preview IDs are single-use and time-limited. On a version conflict, expired preview, or validation failure, stop, read again, and preview again; never retry an old preview_id. Every flow_apply_* call requires confirm=true.",
@@ -294,7 +294,7 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.5" },
+    { name: "flow-codeblock-rust", version: "0.1.6" },
     { instructions: serverInstructions },
   );
 

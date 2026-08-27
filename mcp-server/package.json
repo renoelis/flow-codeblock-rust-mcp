@@ -1,6 +1,6 @@
 {
   "name": "flow-codeblock-rust-mcp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Flow Codeblock Rust+Bun stdio MCP Server for script management and execution.",
   "license": "MIT",
   "repository": {

@@ -211,7 +211,7 @@ describe("Flow Codeblock Rust MCP", () => {
       require_policy?: { other_modules?: string };
       code_rules?: string[];
       execution_error_contract?: {
-        source_location?: { fields?: string[]; indexing?: string };
+        source_location?: { fields?: string[]; indexing?: string; message_policy?: string };
         direct_execution_types?: {
           parse_failure?: string;
           execution_policy_failure?: string;
@@ -236,6 +236,7 @@ describe("Flow Codeblock Rust MCP", () => {
       "lineContent",
     ]);
     expect(payload.execution_error_contract?.source_location?.indexing).toContain("one-based");
+    expect(payload.execution_error_contract?.source_location?.message_policy).toContain("not duplicated");
     expect(payload.execution_error_contract?.direct_execution_types).toEqual({
       parse_failure: "SyntaxError",
       execution_policy_failure: "SecurityError",
@@ -249,23 +250,26 @@ describe("Flow Codeblock Rust MCP", () => {
       () => Response.json({
         success: false,
         error: {
-          type: "SyntaxError",
+          type: "SecurityError",
           category: "user",
-          message: "Unable to parse output protocol",
+          message: "Detected eval",
           retryable: false,
-          details: { line: 2, column: 8, lineContent: "return {;" },
+          details: { line: 2, column: 8, lineContent: "return eval(text);" },
         },
       }, { status: 422 }),
       async (baseUrl) => {
         const response = await callTool(baseUrl, "flow_execute_code", {
-          code: "const value = 1;\nreturn {;",
+          code: "const value = 1;\nreturn eval(text);",
         });
         expect(response.isError).toBe(true);
         const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "";
-        expect(text).toContain('"type": "SyntaxError"');
+        expect(text).toContain('"type": "SecurityError"');
+        expect(text).toContain('"message": "Detected eval"');
         expect(text).toContain('"line": 2');
         expect(text).toContain('"column": 8');
-        expect(text).toContain('"lineContent": "return {;"');
+        expect(text).toContain('"lineContent": "return eval(text);"');
+        expect(text).not.toContain("Location:");
+        expect(text).not.toContain("Matched content:");
       },
     );
   });
