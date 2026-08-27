@@ -140,6 +140,25 @@ export function codeWriterContext(
       input_bytes: 2 * 1024 * 1024,
       result_bytes: 10 * 1024 * 1024,
     },
+    execution_error_contract: {
+      source_location: {
+        fields: ["line", "column", "lineContent"],
+        indexing: "line and column are one-based",
+        included_for: [
+          "pre-execution syntax errors",
+          "dangerous-pattern policy failures",
+          "verified Bun user-code runtime failures",
+        ],
+        omitted_when: "the source location cannot be verified",
+      },
+      direct_execution_types: {
+        parse_failure: "SyntaxError",
+        execution_policy_failure: "SecurityError",
+        user_code_http_status: 422,
+        retryable: false,
+      },
+      script_validation_policy_type: "ValidationError",
+    },
     code_rules: [
       "Read all business data from the global input only; do not read environment variables, persistent globals, or other external state. Return values must be JSON-serializable.",
       "Use top-level return by default. Use qf_output only for event-style/asynchronous flows or when explicitly requested, and assign it as a bare qf_output = { ... } object literal. Never mix it with top-level return or shadow the identifier.",

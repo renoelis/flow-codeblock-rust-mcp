@@ -28,6 +28,7 @@ const result = (value: unknown) => ({
 const serverInstructions = [
   "This is the Flow Codeblock Rust+Bun MCP server. All tools except flow_write_code call the server-side REST API; flow_write_code returns an authoring contract only. Do not guess REST paths or put MCP credentials in business arguments.",
   "User code runs in a server-side Bun async function context with modern JavaScript, async/await, Promises, arrow functions, and top-level return. Default limits are 100 ms minimum timeout, 15,000 ms maximum timeout, 65,535 code bytes, 2 MiB input, and 10 MiB result.",
+  "User-code execution failures preserve the server error type, message, and stack when available. Verified source locations are in error.details with one-based line, column, and lineContent; details are omitted when the location cannot be verified. Direct execution uses SyntaxError for parse failures and SecurityError for execution policy failures; these user-code failures are non-retryable HTTP 422 responses. Script-save validation may retain ValidationError for policy failures.",
   "Tool routing: flow_write_code only generates code and its contract; flow_execute_code is for explicitly requested tests of unpublished non-script code; flow_execute_script runs only published scripts.",
   "Script workflow: read the current version with flow_get_script before updates; creates require a complete interface_doc, while code or document updates may use a complete interface_doc or an RFC 6902 interface_doc_patch (never both, and patches require expected_version). Preview with flow_preview_script_change, then call flow_apply_script_change(confirm=true) only after explicit user confirmation. Documentation-only changes use flow_preview_script_documentation -> flow_apply_script_documentation.",
   "Preview IDs are single-use and time-limited. On a version conflict, expired preview, or validation failure, stop, read again, and preview again; never retry an old preview_id. Every flow_apply_* call requires confirm=true.",
@@ -293,7 +294,7 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.4" },
+    { name: "flow-codeblock-rust", version: "0.1.5" },
     { instructions: serverInstructions },
   );
 
@@ -626,7 +627,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     "flow_execute_script",
     {
       title: "Execute published script",
-      description: "Execute a published script only when the user explicitly requests a test or call. method must be GET or POST; the result includes a complete script_url built from FLOW_CODEBLOCK_BASE_URL and script_id. Array query values become repeated parameters, and a POST body is sent as JSON. MCP authentication, cookies, CSRF, proxy-source headers, and test-tool markers are filtered; qingcodeToken and qingcodeTimeout cannot be supplied as business parameters.",
+      description: "Execute a published script only when the user explicitly requests a test or call. method must be GET or POST; the result includes a complete script_url built from FLOW_CODEBLOCK_BASE_URL and script_id. Array query values become repeated parameters, and a POST body is sent as JSON. User-code failures preserve verified error.details source locations when available. MCP authentication, cookies, CSRF, proxy-source headers, and test-tool markers are filtered; qingcodeToken and qingcodeTimeout cannot be supplied as business parameters.",
       inputSchema: {
         script_id: z.string().min(1).describe("Published script ID; the tool calls /flow/codeblock/{script_id}."),
         method: z.enum(["GET", "POST"]).default("POST").describe("Script request method, either GET or POST; defaults to POST."),
@@ -666,7 +667,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     "flow_execute_code",
     {
       title: "Execute unpublished code",
-      description: "Execute unpublished non-script JavaScript only when the user explicitly requests a test. The result includes a complete execution_url. The request is always POST /flow/codeblock, and body.input is injected unchanged as global input; provide exactly one of code or code_base64. MCP authentication is never written into user input, and this tool does not create or publish scripts.",
+      description: "Execute unpublished non-script JavaScript only when the user explicitly requests a test. The result includes a complete execution_url. The request is always POST /flow/codeblock, and body.input is injected unchanged as global input; provide exactly one of code or code_base64. User-code failures preserve verified error.details source locations when available. MCP authentication is never written into user input, and this tool does not create or publish scripts.",
       inputSchema: {
         code: z.string().min(1).optional().describe("UTF-8 JavaScript source, mutually exclusive with code_base64."),
         code_base64: z.string().min(1).optional().describe("Non-empty Base64-encoded JavaScript source, mutually exclusive with code."),

@@ -24,6 +24,22 @@ Successful responses contain `success: true`, business fields, `timestamp`, and 
 
 `executionTime` measures the lifecycle of the user's JavaScript in milliseconds, rounded to three decimal places. It includes asynchronous waits triggered by user code but excludes execution-queue wait, runtime initialization, and result serialization. `totalTime` is the server's estimated time from request receipt to construction of the final response body, including request-body reading, validation, queueing, execution, and response handling, but excluding network round trips. Response Time shown by a browser Network panel, Postman, or curl is measured by the client and is usually larger. Error responses contain `error.type` and `error.message`.
 
+When the server can verify a user-code source location, `error.details` contains `line`, `column`, and `lineContent`; line and column are one-based. This applies to pre-execution syntax errors, dangerous-pattern policy failures, and Bun user-code runtime failures. The field is omitted when the location cannot be verified. Direct execution reports parse failures as `SyntaxError` and execution policy failures as `SecurityError`; these user-code failures return HTTP 422 with `retryable: false`. Script-save validation may retain `ValidationError` for policy failures.
+
+Example source-location details:
+
+```json
+{
+  "type": "ReferenceError",
+  "message": "missing is not defined",
+  "details": {
+    "line": 2,
+    "column": 8,
+    "lineContent": "return missing;"
+  }
+}
+```
+
 ## Health and monitoring
 
 | Method | Path | Auth | Description |
@@ -173,3 +189,5 @@ POST bodies, query parameters, headers, and cookies map to script `input` accord
 | GET | `/flow/test-tool` | Test-tool page |
 | GET | `/flow/test-tool/csrf` | Obtain a browser CSRF token |
 | GET | `/flow/assets/{asset_path}` | Test-tool static asset |
+
+The Ace JavaScript mode uses `/flow/assets/worker-javascript-flow.js`, which wraps the stock worker and keeps diagnostics aligned with the server-side runtime.

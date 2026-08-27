@@ -19,7 +19,7 @@ Obtain a user-scoped `FLOW_CODEBLOCK_TOKEN` from your Flow Codeblock administrat
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.4"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.5"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -36,7 +36,7 @@ You can also check startup from a terminal:
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_FLOW_CODEBLOCK_TOKEN>'
-bunx --bun flow-codeblock-rust-mcp@0.1.4
+bunx --bun flow-codeblock-rust-mcp@0.1.5
 ```
 
 After startup the process waits for the client to communicate over stdio; this is expected.
@@ -79,4 +79,5 @@ Final delivery is mode-specific. Non-script mode shows complete JavaScript, invo
 - Management requests use `Authorization: Bearer`; published-script execution does not forward that credential.
 - User-supplied Authorization, accessToken, Cookie, CSRF, test-tool, MCP, `Forwarded`, `X-Real-IP`, and `X-Forwarded-*` headers are filtered.
 - All API requests use a 30-second timeout. Errors retain only the HTTP status and a redacted server error body.
+- Verified user-code locations are preserved in `error.details.line`, `error.details.column`, and `error.details.lineContent` with one-based line and column numbers; the details are omitted when the location cannot be verified. Direct parse and execution-policy failures use `SyntaxError` and `SecurityError` and return HTTP 422 with `retryable: false`.
 - Inject tokens through client secret management; never commit them to Git, an npm package, or public configuration.

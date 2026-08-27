@@ -9,7 +9,7 @@ This project is maintained separately from the existing `flow-codeblock-mcp` rep
 Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.4
+bunx --bun flow-codeblock-rust-mcp@0.1.5
 ```
 
 The MCP client must inject these environment variables before startup:
@@ -30,7 +30,7 @@ Clients that support local stdio MCP servers can use:
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.4"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.5"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -41,6 +41,8 @@ Clients that support local stdio MCP servers can use:
 ```
 
 The base URL is the Rust REST API origin, not a remote MCP URL. This release provides local stdio only; it does not expose remote HTTP, SSE, or Streamable HTTP transports.
+
+Execution errors preserve verified user-code locations in `error.details.line`, `error.details.column`, and `error.details.lineContent` with one-based line and column numbers. The details are omitted when the location cannot be verified; direct parse and execution-policy failures use `SyntaxError` and `SecurityError` respectively and return HTTP 422 with `retryable: false`.
 
 ## Codex Plugin
 

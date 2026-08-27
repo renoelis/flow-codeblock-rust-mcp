@@ -123,6 +123,8 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(instructions).toContain("content_type=application/json");
       expect(instructions).toContain("Non-script delivery includes complete JavaScript");
       expect(instructions).toContain("Script delivery omits JavaScript and raw interface_doc by default");
+      expect(instructions).toContain("error.details");
+      expect(instructions).toContain("lineContent");
       const listed = await client.listTools();
       expect(listed.tools).toHaveLength(expectedToolNames.length);
       expect(new Set(listed.tools.map((tool) => tool.name))).toEqual(new Set(expectedToolNames));
@@ -208,6 +210,15 @@ describe("Flow Codeblock Rust MCP", () => {
       allowed_modules?: unknown;
       require_policy?: { other_modules?: string };
       code_rules?: string[];
+      execution_error_contract?: {
+        source_location?: { fields?: string[]; indexing?: string };
+        direct_execution_types?: {
+          parse_failure?: string;
+          execution_policy_failure?: string;
+          user_code_http_status?: number;
+          retryable?: boolean;
+        };
+      };
     };
     const allowed = payload.allowed_modules as string[];
     expect(allowed).toContain("pinyin-pro");
@@ -219,6 +230,44 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(payload.require_policy?.other_modules).toContain("write-excel-file/utility");
     expect(payload.code_rules?.join(" ")).toContain("node:crypto");
     expect(payload.code_rules?.join(" ")).toContain("crypto-js");
+    expect(payload.execution_error_contract?.source_location?.fields).toEqual([
+      "line",
+      "column",
+      "lineContent",
+    ]);
+    expect(payload.execution_error_contract?.source_location?.indexing).toContain("one-based");
+    expect(payload.execution_error_contract?.direct_execution_types).toEqual({
+      parse_failure: "SyntaxError",
+      execution_policy_failure: "SecurityError",
+      user_code_http_status: 422,
+      retryable: false,
+    });
+  });
+
+  test("preserves verified source locations in execution errors", async () => {
+    await withMockApi(
+      () => Response.json({
+        success: false,
+        error: {
+          type: "SyntaxError",
+          category: "user",
+          message: "Unable to parse output protocol",
+          retryable: false,
+          details: { line: 2, column: 8, lineContent: "return {;" },
+        },
+      }, { status: 422 }),
+      async (baseUrl) => {
+        const response = await callTool(baseUrl, "flow_execute_code", {
+          code: "const value = 1;\nreturn {;",
+        });
+        expect(response.isError).toBe(true);
+        const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "";
+        expect(text).toContain('"type": "SyntaxError"');
+        expect(text).toContain('"line": 2');
+        expect(text).toContain('"column": 8');
+        expect(text).toContain('"lineContent": "return {;"');
+      },
+    );
   });
 
   test("uses bearer authentication for management requests", async () => {
