@@ -2,6 +2,7 @@
   "_comment": "Dangerous identifier and member-pattern list; host changes take effect after a service restart and are not hot-reloaded through an API.",
   "identifiers": {
     "Function": "Detected Function",
+    "constructor": "Dynamic code generation through constructor is forbidden",
     "Proxy": "Detected Proxy",
     "__proto__": "Detected __proto__",
     "child_process": "Detected child_process",
@@ -32,6 +33,7 @@
       "_linkedBinding": "Detected process._linkedBinding",
       "binding": "Detected process.binding",
       "dlopen": "Detected process.dlopen",
+      "env": "Reading server environment variables is forbidden; pass third-party credentials through input",
       "exit": "Detected process.exit",
       "kill": "Detected process.kill"
     }

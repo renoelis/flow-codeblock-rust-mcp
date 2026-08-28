@@ -125,6 +125,9 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(instructions).toContain("Script delivery omits JavaScript and raw interface_doc by default");
       expect(instructions).toContain("error.details");
       expect(instructions).toContain("lineContent");
+      expect(instructions).toContain("Bun-native fetch");
+      expect(instructions).toContain("constructor-based code generation");
+      expect(instructions).toContain("fs/node:fs");
       const listed = await client.listTools();
       expect(listed.tools).toHaveLength(expectedToolNames.length);
       expect(new Set(listed.tools.map((tool) => tool.name))).toEqual(new Set(expectedToolNames));
@@ -210,6 +213,7 @@ describe("Flow Codeblock Rust MCP", () => {
       allowed_modules?: unknown;
       require_policy?: { other_modules?: string };
       code_rules?: string[];
+      forbidden?: { identifiers?: string[]; members?: string[]; modules?: string[] };
       execution_error_contract?: {
         source_location?: { fields?: string[]; indexing?: string; message_policy?: string };
         direct_execution_types?: {
@@ -230,6 +234,11 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(payload.require_policy?.other_modules).toContain("write-excel-file/utility");
     expect(payload.code_rules?.join(" ")).toContain("node:crypto");
     expect(payload.code_rules?.join(" ")).toContain("crypto-js");
+    expect(payload.code_rules?.join(" ")).toContain("Bun-native fetch");
+    expect(payload.code_rules?.join(" ")).toContain("real axios");
+    expect(payload.forbidden?.identifiers).toContain("constructor");
+    expect(payload.forbidden?.members).toContain("process.env");
+    expect(payload.forbidden?.modules).toEqual(expect.arrayContaining(["fs", "node:fs"]));
     expect(payload.execution_error_contract?.source_location?.fields).toEqual([
       "line",
       "column",

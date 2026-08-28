@@ -163,7 +163,7 @@ export function codeWriterContext(
     code_rules: [
       "Read all business data from the global input only; do not read environment variables, persistent globals, or other external state. Return values must be JSON-serializable.",
       "Use top-level return by default. Use qf_output only for event-style/asynchronous flows or when explicitly requested, and assign it as a bare qf_output = { ... } object literal. Never mix it with top-level return or shadow the identifier.",
-      "Prefer standard JavaScript, server-side fetch, and node:crypto. Use a whitelisted CommonJS literal require only when native capabilities cannot meet the requirement and the user explicitly requests it. crypto-js has been removed and must not be generated.",
+      "Prefer standard JavaScript, Bun-native fetch, real axios, and node:crypto. Network requests use Bun's native network stack. Use a whitelisted CommonJS literal require only when native capabilities cannot meet the requirement and the user explicitly requests it. crypto-js has been removed and must not be generated.",
       "Do not use import/export, dynamic require, browser APIs, timers, forbidden identifiers or members, or blacklisted Node modules. Never write real credentials.",
       "Put business logic and asynchronous operations in try-catch; return errors as strings or plain objects.",
       "Do not create unbounded loops, unsettled Promises, or background tasks that outlive execution; every request must be awaited or returned.",
@@ -180,15 +180,15 @@ export function codeWriterContext(
     },
     forbidden: {
       identifiers: [
-        "eval", "Function", "Proxy", "__proto__", "child_process", "exec", "execFile", "execSync", "fork", "spawn",
+        "eval", "Function", "Proxy", "constructor", "__proto__", "child_process", "exec", "execFile", "execSync", "fork", "spawn",
         "module", "exports", "setImmediate", "setInterval", "setTimeout",
       ],
       members: [
         "Object.getPrototypeOf", "Object.setPrototypeOf", "Reflect.construct", "Reflect.apply", "Reflect.get", "Reflect.set",
-        "process.exit", "process.kill", "process.binding", "process._linkedBinding", "process.dlopen",
+        "process.env", "process.exit", "process.kill", "process.binding", "process._linkedBinding", "process.dlopen",
       ],
       modules: [
-        "child_process", "cluster", "dgram", "dns", "http", "http2", "https", "inspector", "internal", "module", "node:module",
+        "child_process", "cluster", "dgram", "dns", "fs", "node:fs", "http", "http2", "https", "inspector", "internal", "module", "node:module",
         "net", "os", "perf_hooks", "async_hooks", "bun", "process", "readline", "repl", "tls", "undici", "v8", "vm", "vm2", "worker_threads", "ws",
       ],
     },
