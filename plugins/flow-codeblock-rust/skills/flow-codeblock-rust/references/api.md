@@ -51,7 +51,7 @@ Example source-location details:
 
 ## Direct execution
 
-`POST /flow/codeblock` requires authentication. The request body's `codebase64` is Base64-encoded UTF-8 JavaScript; the code must contain `return` or a valid `qf_output` assignment.
+`POST /flow/codeblock` requires authentication. The request body's `codebase64` is Base64-encoded UTF-8 JavaScript; the code must contain `return` or a valid `qf_output` assignment. The injected `input` value is a reserved runtime binding; never declare, rebind, or shadow it in generated code. Use an alias such as `const payload = input` when a local name is needed.
 
 ```json
 {
@@ -180,7 +180,7 @@ Common failure statuses: `401` means the recovery token is missing or does not m
 
 `GET|POST /flow/codeblock/{script_id}` is intended for controlled enterprise callers and does not require an access token. The service still checks script state, source-IP allowlists, code safety rules, and execution timeout. Do not expose this endpoint to an uncontrolled network or use scripts for unauditable external side effects.
 
-POST bodies, query parameters, headers, and cookies map to script `input` according to the existing input contract. A script return object may set `flow_redirect_url` and an optional `flow_redirect_code` (301, 302, 303, 307, or 308) to trigger a safe HTTP(S) redirect.
+POST bodies, query parameters, headers, and cookies map to script `input` according to the existing input contract. The injected `input` value is a reserved runtime binding; never declare, rebind, or shadow it in generated code. A script return object may set `flow_redirect_url` and an optional `flow_redirect_code` (301, 302, 303, 307, or 308) to trigger a safe HTTP(S) redirect.
 
 ## Built-in test tool
 

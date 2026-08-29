@@ -125,6 +125,8 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(instructions).toContain("every later revision in non-script mode");
       expect(instructions).toContain("never return only a patch, diff, or partial snippet");
       expect(instructions).toContain("Never generate RegExp.exec or .exec(...)");
+      expect(instructions).toContain("reserved, read-only runtime binding");
+      expect(instructions).toContain("const payload = input");
       expect(instructions).toContain("Script delivery omits JavaScript and raw interface_doc by default");
       expect(instructions).toContain("error.details");
       expect(instructions).toContain("lineContent");
@@ -152,6 +154,7 @@ describe("Flow Codeblock Rust MCP", () => {
       const baseUrlSchema = writeCode?.inputSchema.properties?.base_url as { description?: string } | undefined;
       expect(baseUrlSchema?.description).toContain("/flow/codeblock/{{script_id}}");
       expect(listed.tools.find((tool) => tool.name === "flow_execute_code")?.description).toContain("does not require user confirmation");
+      expect(listed.tools.find((tool) => tool.name === "flow_execute_code")?.description).toContain("reserved runtime binding");
     } finally {
       await client.close();
       await server.close();
@@ -249,6 +252,8 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(payload.code_rules?.join(" ")).toContain("Never generate RegExp.exec or .exec(...)");
     expect(payload.code_rules?.join(" ")).toContain("text.match(regex)");
     expect(payload.code_rules?.join(" ")).toContain("regex.test(text)");
+    expect(payload.code_rules?.join(" ")).toContain("reserved, read-only runtime binding");
+    expect(payload.code_rules?.join(" ")).toContain("const payload = input");
     expect(payload.forbidden?.identifiers).toContain("constructor");
     expect(payload.forbidden?.members).toContain("process.env");
     expect(payload.forbidden?.modules).toEqual(expect.arrayContaining(["fs", "node:fs"]));

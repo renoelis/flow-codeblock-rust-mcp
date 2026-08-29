@@ -9,7 +9,7 @@ This project is maintained separately from the existing `flow-codeblock-mcp` rep
 Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.8
+bunx --bun flow-codeblock-rust-mcp@0.1.9
 ```
 
 The MCP client must inject these environment variables before startup:
@@ -30,7 +30,7 @@ Clients that support local stdio MCP servers can use:
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.8"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.9"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -59,6 +59,8 @@ The Skill requires the workflow `read current version -> preview -> server valid
 The authoring context treats forbidden identifiers as forbidden in properties and method calls too; for example, generated code uses `text.match(regex)` or `regex.test(text)` instead of `RegExp.exec`. When generated code and the available safe input are sufficient for a meaningful runtime test, the client executes it immediately without waiting for user confirmation. If required input or credentials are missing, it reports that runtime verification was not performed instead of inventing them. Final delivery is mode-specific. Every initial `non_script` generation and every later revision returns the complete latest generated JavaScript, never only a patch, diff, or partial snippet, even after runtime verification; it also includes invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. `script` omits JavaScript and raw `interface_doc` by default and returns invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`. Script code and `interface_doc` remain internal inputs to MCP preview, validation, and publication unless the user explicitly requests source or raw documentation.
 
 ## Tool boundaries
+
+Generated code treats `input` as a reserved, read-only runtime binding: never declare, rebind, or shadow it in any scope; use an alias such as `const payload = input` when a local name is needed. Review the complete source for input shadowing before every execution and retry.
 
 The code contract follows the current Rust+Bun module allowlist. `crypto-js` has been removed; use `node:crypto` for cryptography. Excel imports are limited to `read-excel-file/node`, `read-excel-file/universal`, `write-excel-file/node`, `write-excel-file/universal`, and `write-excel-file/utility`; these modules run in the server's shared heavy execution pool.
 

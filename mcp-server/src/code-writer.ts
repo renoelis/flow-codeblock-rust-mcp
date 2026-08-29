@@ -162,6 +162,7 @@ export function codeWriterContext(
     },
     code_rules: [
       "Read all business data from the global input only; do not read environment variables, persistent globals, or other external state. Return values must be JSON-serializable.",
+      "Treat input as a reserved, read-only runtime binding. Never declare, redeclare, rebind, or destructure a local binding named input in any scope, including const/let/var declarations, function parameters, catch bindings, and nested callbacks. If a local name is needed, alias it to payload or another name, for example const payload = input. Review the complete source for input shadowing before every execution and retry.",
       "Use top-level return by default. Use qf_output only for event-style/asynchronous flows or when explicitly requested, and assign it as a bare qf_output = { ... } object literal. Never mix it with top-level return or shadow the identifier.",
       "Prefer standard JavaScript, Bun-native fetch, real axios, and node:crypto. Network requests use Bun's native network stack. Use a whitelisted CommonJS literal require only when native capabilities cannot meet the requirement and the user explicitly requests it. crypto-js has been removed and must not be generated.",
       "Do not use import/export, dynamic require, browser APIs, timers, forbidden identifiers or members, or blacklisted Node modules. Never write real credentials.",
