@@ -165,6 +165,7 @@ export function codeWriterContext(
       "Use top-level return by default. Use qf_output only for event-style/asynchronous flows or when explicitly requested, and assign it as a bare qf_output = { ... } object literal. Never mix it with top-level return or shadow the identifier.",
       "Prefer standard JavaScript, Bun-native fetch, real axios, and node:crypto. Network requests use Bun's native network stack. Use a whitelisted CommonJS literal require only when native capabilities cannot meet the requirement and the user explicitly requests it. crypto-js has been removed and must not be generated.",
       "Do not use import/export, dynamic require, browser APIs, timers, forbidden identifiers or members, or blacklisted Node modules. Never write real credentials.",
+      "Treat every forbidden identifier as forbidden in every syntactic position, including property names and method calls. Never generate RegExp.exec or .exec(...); use text.match(regex) for capture groups or regex.test(text) for boolean checks. Review the complete source and rewrite every forbidden identifier, member, or module before execution.",
       "Put business logic and asynchronous operations in try-catch; return errors as strings or plain objects.",
       "Do not create unbounded loops, unsettled Promises, or background tasks that outlive execution; every request must be awaited or returned.",
       "Validate external URLs, headers, query parameters, and request bodies for type, length, and allowed ranges. Check HTTP status and handle JSON, text, and empty responses separately.",
@@ -212,12 +213,12 @@ export function codeWriterContext(
         "Generate immediate non_script mode when the user does not specify a mode.",
         "If the requirement includes an HTTP redirect, use script mode with /flow/codeblock/{{script_id}}.",
       ],
-      deliverables: ["A complete javascript code block containing executable JavaScript only", "Input and output contracts"],
+      deliverables: ["The complete latest javascript code block containing executable JavaScript only", "Input and output contracts"],
       test_tool: { name: "flow_execute_code", arguments: { code: "<JavaScript>", input: inputExample ?? {}, timeout_ms: 3000 } },
       rule: "Call flow_execute_code immediately when the available requirement and safe input are sufficient for a meaningful test; do not wait for user confirmation.",
       response_format: [
         "Unless the user explicitly requests code only, explain the mode and output first, then provide the JavaScript code block, followed by request/response examples.",
-        "For non_script interfaces, always deliver the complete generated JavaScript in the final response, even after runtime verification, plus invocation instructions, request parameters and examples, execution logic, success/error output examples, and execution_url.",
+        "For every initial generation and every later revision of a non_script interface, always deliver the complete latest generated JavaScript in the final response, even after runtime verification; never deliver only a patch, diff, or partial snippet. Also include invocation instructions, request parameters and examples, execution logic, success/error output examples, and execution_url.",
       ],
     };
   }

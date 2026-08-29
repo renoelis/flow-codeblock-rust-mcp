@@ -1,6 +1,6 @@
 {
   "name": "flow-codeblock-rust",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Manage, validate, publish, and execute Flow Codeblock Rust+Bun scripts through a local stdio MCP server.",
   "repository": "https://github.com/renoelis/flow-codeblock-rust-mcp",
   "author": {

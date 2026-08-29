@@ -122,7 +122,9 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(instructions).toContain("/flow/codeblock/{{script_id}}");
       expect(instructions).toContain("content_type=application/json");
       expect(instructions).toContain("execute it immediately without waiting for user confirmation");
-      expect(instructions).toContain("always includes the complete generated JavaScript in the final response");
+      expect(instructions).toContain("every later revision in non-script mode");
+      expect(instructions).toContain("never return only a patch, diff, or partial snippet");
+      expect(instructions).toContain("Never generate RegExp.exec or .exec(...)");
       expect(instructions).toContain("Script delivery omits JavaScript and raw interface_doc by default");
       expect(instructions).toContain("error.details");
       expect(instructions).toContain("lineContent");
@@ -144,7 +146,7 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(collectStrings(instructions).some((value) => cjkPattern.test(value))).toBe(false);
       const writeCode = listed.tools.find((tool) => tool.name === "flow_write_code");
       expect(writeCode?.description).toContain("complete script-interface-doc.v1");
-      expect(writeCode?.description).toContain("always deliver the complete generated JavaScript");
+      expect(writeCode?.description).toContain("every non_script generation or revision");
       expect(writeCode?.description).toContain("Script delivery includes invocation instructions");
       expect(writeCode?.inputSchema.properties?.base_url).toBeDefined();
       const baseUrlSchema = writeCode?.inputSchema.properties?.base_url as { description?: string } | undefined;
@@ -205,7 +207,8 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(nonScriptPayload.execution_url).toBe("http://127.0.0.1:3003/flow/codeblock");
     expect(nonScriptPayload.verification_rule).toContain("run a meaningful execution test immediately");
     expect(nonScriptPayload.rule).toContain("do not wait for user confirmation");
-    expect(nonScriptPayload.response_format.join(" ")).toContain("always deliver the complete generated JavaScript");
+    expect(nonScriptPayload.response_format.join(" ")).toContain("every later revision");
+    expect(nonScriptPayload.response_format.join(" ")).toContain("never deliver only a patch, diff, or partial snippet");
     expect(payload).not.toHaveProperty("execution_url");
     expect(payload).not.toHaveProperty("script_url");
   });
@@ -243,6 +246,9 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(payload.code_rules?.join(" ")).toContain("crypto-js");
     expect(payload.code_rules?.join(" ")).toContain("Bun-native fetch");
     expect(payload.code_rules?.join(" ")).toContain("real axios");
+    expect(payload.code_rules?.join(" ")).toContain("Never generate RegExp.exec or .exec(...)");
+    expect(payload.code_rules?.join(" ")).toContain("text.match(regex)");
+    expect(payload.code_rules?.join(" ")).toContain("regex.test(text)");
     expect(payload.forbidden?.identifiers).toContain("constructor");
     expect(payload.forbidden?.members).toContain("process.env");
     expect(payload.forbidden?.modules).toEqual(expect.arrayContaining(["fs", "node:fs"]));
