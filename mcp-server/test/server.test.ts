@@ -599,6 +599,25 @@ describe("Flow Codeblock Rust MCP", () => {
     );
   });
 
+  test("rejects incomplete documentation previews before any API call", async () => {
+    await withMockApi(
+      () => new Response("unexpected request", { status: 500 }),
+      async (baseUrl, requests) => {
+        const document = completeInterfaceDocument();
+        const responseSchema = (document.responses as Array<Record<string, unknown>>)[0].schema as Record<string, unknown>;
+        responseSchema.type = "array";
+        responseSchema.example = [];
+        delete responseSchema.properties;
+        const response = await callTool(baseUrl, "flow_preview_script_documentation", {
+          script_id: "abc",
+          document,
+        });
+        expect(response.isError).toBe(true);
+        expect(requests).toHaveLength(0);
+      },
+    );
+  });
+
   test("preview store expires entries and enforces its upper bound", () => {
     let now = 1_000;
     const store = new PreviewStore<Record<string, unknown>>({ maxEntries: 1, ttlMs: 10, now: () => now });

@@ -525,7 +525,10 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     },
     withApiErrors(async (input) => {
       const parsed = documentationSchema.parse(input);
-      if (parsed.document !== undefined) parsed.document = normalizeInterfaceDocument(parsed.document);
+      if (parsed.document !== undefined) {
+        parsed.document = normalizeInterfaceDocument(parsed.document);
+        assertCompleteInterfaceDoc(parsed.document, "update");
+      }
       const expectedVersion = await fetchCurrentVersion(api, parsed.script_id);
       if (parsed.document_patch !== undefined && parsed.expected_version !== expectedVersion) {
         throw new Error(`Script version changed from ${parsed.expected_version} to ${expectedVersion}; read and preview again`);
