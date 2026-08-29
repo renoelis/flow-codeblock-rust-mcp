@@ -19,7 +19,7 @@ Obtain a user-scoped `FLOW_CODEBLOCK_TOKEN` from your Flow Codeblock administrat
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.10"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.11"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -36,7 +36,7 @@ You can also check startup from a terminal:
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_FLOW_CODEBLOCK_TOKEN>'
-bunx --bun flow-codeblock-rust-mcp@0.1.10
+bunx --bun flow-codeblock-rust-mcp@0.1.11
 ```
 
 After startup the process waits for the client to communicate over stdio; this is expected.

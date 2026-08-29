@@ -298,7 +298,7 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.10" },
+    { name: "flow-codeblock-rust", version: "0.1.11" },
     { instructions: serverInstructions },
   );
 

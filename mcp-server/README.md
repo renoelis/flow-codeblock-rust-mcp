@@ -7,7 +7,7 @@ Local stdio MCP server for Flow Codeblock Rust+Bun. It calls the server-side Rus
 Bun 1.4.0 or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.10
+bunx --bun flow-codeblock-rust-mcp@0.1.11
 ```
 
 Configure the environment:
@@ -26,7 +26,7 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.10"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.11"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_INTERNAL_ACCESS_TOKEN>"
