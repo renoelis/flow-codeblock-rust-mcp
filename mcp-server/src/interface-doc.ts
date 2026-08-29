@@ -26,6 +26,7 @@ export const interfaceDocNestedRules = [
 
 export const interfaceDocInputDescription = [
   "A complete script-interface-doc.v1 document is required when creating a script, changing code, or saving documentation.",
+  "Submit interface_doc/document as a JSON object. Legacy JSON text is accepted and parsed once by MCP for compatibility. MCP fills nested examples only from matching parent examples, uses a neutral description when one is omitted, and never guesses a missing type.",
   `Required structure: ${Object.entries(interfaceDocRequiredFields).map(([key, fields]) => `${key}=[${fields.join(", ")}]`).join("; ")}.`,
   ...interfaceDocNestedRules,
   "endpoint.path is relative and must be /flow/codeblock/<actual-script-id> on update; the final public URL is the caller-provided domain followed by /flow/codeblock/<script-id>.",
@@ -71,6 +72,82 @@ export const interfaceDocPatchJsonSchema = {
   },
 } as const;
 
+let schemaNodeInputSchema: z.ZodTypeAny;
+schemaNodeInputSchema = z.lazy(() => z.looseObject({
+  type: z.string().min(1).describe("JSON Schema type such as object, array, string, integer, number, or boolean."),
+  description: z.string().min(1).describe("Description of this nested field or data structure."),
+  example: z.unknown().describe("A concrete value matching this nested schema node."),
+  properties: z.record(z.string(), schemaNodeInputSchema).optional().describe("Map fixed object field names to child schema nodes."),
+  items: schemaNodeInputSchema.optional().describe("Child schema node for each array item."),
+  additionalProperties: z.union([z.boolean(), schemaNodeInputSchema]).optional().describe("Boolean or child schema for dynamic object keys."),
+  required: z.array(z.string()).optional().describe("Runtime-required object field names."),
+}));
+
+const schemaRootInputSchema = z.looseObject({
+  type: z.string().min(1).describe("JSON Schema type such as object, array, string, integer, number, or boolean."),
+  description: z.string().optional().describe("Description of the root data structure."),
+  example: z.unknown().optional().describe("Complete example matching this root schema."),
+  properties: z.record(z.string(), schemaNodeInputSchema).optional().describe("Map fixed object field names to child schema nodes."),
+  items: schemaNodeInputSchema.optional().describe("Child schema node for each array item."),
+  additionalProperties: z.union([z.boolean(), schemaNodeInputSchema]).optional().describe("Boolean or child schema for dynamic object keys."),
+  required: z.array(z.string()).optional().describe("Runtime-required object field names."),
+});
+
+const parameterInputSchema = z.looseObject({
+  name: z.string().min(1).describe("Caller-facing query parameter or HTTP header name."),
+  type: z.enum(["string", "integer", "number", "boolean", "array", "object"]).describe("Parameter JSON type."),
+  required: z.boolean().describe("Whether the parameter is required at runtime."),
+  description: z.string().min(1).describe("Purpose and constraints of the parameter."),
+  example: z.unknown().describe("Concrete example value for the parameter."),
+  default: z.unknown().optional().describe("Optional default value."),
+  format: z.string().optional().describe("Optional format hint."),
+  enum_values: z.array(z.unknown()).optional().describe("Optional allowed values."),
+});
+
+const interfaceDocToolInputObjectSchema = z.looseObject({
+  schema_version: z.literal("script-interface-doc.v1").describe("Fixed document contract version."),
+  title: z.string().min(1).describe("Interface document title."),
+  summary: z.string().min(1).describe("One-sentence caller-facing summary."),
+  endpoint: z.looseObject({
+    methods: z.array(z.enum(["GET", "POST"])).min(1).describe("HTTP methods supported by the endpoint."),
+    path: z.string().optional().describe("Actual /flow/codeblock/{script_id} path on update."),
+    description: z.string().min(1).describe("What the callable endpoint does."),
+  }).describe("HTTP endpoint contract."),
+  request: z.looseObject({
+    query: z.array(parameterInputSchema).describe("Caller-facing URL query parameters; use [] when empty."),
+    headers: z.array(parameterInputSchema).describe("Caller-facing HTTP headers; use [] when empty."),
+    body: z.looseObject({
+      content_type: z.literal("application/json").describe("Must be application/json."),
+      schema: schemaRootInputSchema.describe("Request body JSON Schema."),
+      example: z.unknown().describe("Complete request body example matching schema."),
+    }).optional().describe("POST request body."),
+  }).describe("Caller request contract."),
+  responses: z.array(z.looseObject({
+    status: z.number().int().min(100).max(599).describe("HTTP status code from 100 through 599."),
+    description: z.string().min(1).describe("Business meaning of this response branch."),
+    content_type: z.literal("application/json").describe("Must be application/json."),
+    schema: schemaRootInputSchema.describe("Response body JSON Schema."),
+    example: z.unknown().describe("Complete response example matching schema."),
+  })).min(1).describe("Complete response branches at the document root."),
+  logic_description: z.string().min(20).describe("Endpoint processing logic; at least 20 characters."),
+  usage_refs: z.array(z.unknown()).optional().describe("Real application references only."),
+});
+
+function parseLegacyJsonDocument(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+// Keep the advertised shape object-based while accepting one legacy JSON string parse.
+export const interfaceDocToolInputSchema = z.preprocess(
+  parseLegacyJsonDocument,
+  interfaceDocToolInputObjectSchema,
+).describe(interfaceDocInputDescription);
+
 export function assertInterfaceDocPatch(patch: unknown): void {
   const parsed = interfaceDocPatchSchema.safeParse(patch);
   if (!parsed.success) throw new Error(`Invalid interface_doc_patch format: ${parsed.error.message}`);
@@ -82,6 +159,68 @@ function isObject(value: unknown): value is JsonObject {
 
 function hasOwn(object: JsonObject, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(object, key);
+}
+
+function normalizeSchemaNode(
+  schema: JsonObject,
+  parentExample: unknown,
+  fieldName: string,
+  root = false,
+): void {
+  // ponytail: first array item supplies nested examples; use a heterogeneous-array schema if that ceiling matters.
+  if (!root) {
+    if (typeof schema.description !== "string" || !schema.description.trim()) {
+      schema.description = `Value for field "${fieldName}".`;
+    }
+    if (!hasOwn(schema, "example") && parentExample !== undefined) {
+      schema.example = structuredClone(parentExample);
+    }
+  }
+  const example = hasOwn(schema, "example") ? schema.example : parentExample;
+  if (schema.type === "array") {
+    if (isObject(schema.items)) {
+      const itemExample = Array.isArray(example) && example.length > 0 ? example[0] : undefined;
+      normalizeSchemaNode(schema.items, itemExample, `${fieldName} item`);
+    }
+    return;
+  }
+  if (schema.type !== "object") return;
+  const properties = isObject(schema.properties) ? schema.properties : undefined;
+  if (properties) {
+    for (const [key, propertySchema] of Object.entries(properties)) {
+      if (!isObject(propertySchema)) continue;
+      const childExample = isObject(example) && hasOwn(example, key) ? example[key] : undefined;
+      normalizeSchemaNode(propertySchema, childExample, key);
+    }
+  }
+  if (isObject(schema.additionalProperties)) {
+    const knownKeys = new Set(properties ? Object.keys(properties) : []);
+    const dynamicExample = isObject(example)
+      ? Object.entries(example).find(([key]) => !knownKeys.has(key))?.[1]
+      : undefined;
+    normalizeSchemaNode(schema.additionalProperties, dynamicExample, `${fieldName} value`);
+  }
+}
+
+export function normalizeInterfaceDocument(document: unknown): unknown {
+  if (!isObject(document)) return document;
+  const normalized = structuredClone(document) as JsonObject;
+  const containers: JsonObject[] = [];
+  if (isObject(normalized.request) && isObject(normalized.request.body)) {
+    containers.push(normalized.request.body);
+  }
+  if (Array.isArray(normalized.responses)) {
+    containers.push(...normalized.responses.filter(isObject));
+  }
+  for (const container of containers) {
+    const schema = isObject(container.schema) ? container.schema : undefined;
+    if (!schema) continue;
+    if (!hasOwn(container, "example") && hasOwn(schema, "example")) {
+      container.example = structuredClone(schema.example);
+    }
+    normalizeSchemaNode(schema, container.example, "root", true);
+  }
+  return normalized;
 }
 
 function requireText(object: JsonObject, key: string, path: string, issues: string[], minLength = 1): void {
@@ -97,12 +236,21 @@ function validateSchemaExampleCoverage(
   schemaPath: string,
   examplePath: string,
   issues: string[],
+  requireMetadata = false,
 ): void {
   if (typeof schema.type !== "string") {
     issues.push(`${schemaPath}.type is required`);
-    return;
+  }
+  if (requireMetadata) {
+    requireText(schema, "description", schemaPath, issues);
+    if (!hasOwn(schema, "example")) {
+      issues.push(`${schemaPath}.example is required`);
+    }
   }
   if (schema.type === "array") {
+    if (!isObject(schema.items)) {
+      issues.push(`${schemaPath}.items is required for array schemas`);
+    }
     if (!Array.isArray(example)) {
       issues.push(`${examplePath} must be an array`);
       return;
@@ -117,6 +265,7 @@ function validateSchemaExampleCoverage(
       `${schemaPath}.items`,
       `${examplePath}[${index}]`,
       issues,
+      true,
     ));
     return;
   }
@@ -124,7 +273,8 @@ function validateSchemaExampleCoverage(
 
   const properties = isObject(schema.properties) ? schema.properties : undefined;
   const additionalProperties = isObject(schema.additionalProperties) ? schema.additionalProperties : undefined;
-  if (!properties && !additionalProperties) {
+  const allowsAdditionalProperties = additionalProperties !== undefined || schema.additionalProperties === true;
+  if (!properties && !allowsAdditionalProperties) {
     issues.push(`${schemaPath} must define properties or an additionalProperties schema`);
     return;
   }
@@ -143,6 +293,7 @@ function validateSchemaExampleCoverage(
           `${schemaPath}.properties.${key}`,
           `${examplePath}.${key}`,
           issues,
+          true,
         );
       } else {
         issues.push(`${schemaPath}.properties.${key} must be a JSON Schema object`);
@@ -158,9 +309,12 @@ function validateSchemaExampleCoverage(
         `${schemaPath}.additionalProperties`,
         `${examplePath}.${key}`,
         issues,
+        true,
       );
-    } else {
+    } else if (schema.additionalProperties !== true) {
       issues.push(`${schemaPath}.properties does not define example field ${key}`);
+    } else {
+      // additionalProperties=true explicitly allows opaque upstream JSON.
     }
   }
 }
@@ -288,7 +442,7 @@ export function interfaceDocCompletenessIssues(document: unknown, operation: "cr
       validateSchemaAndExample(response, path, issues);
     });
   }
-  return issues;
+  return [...new Set(issues)];
 }
 
 export function assertCompleteInterfaceDoc(document: unknown, operation: "create" | "update"): void {

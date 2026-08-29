@@ -19,7 +19,7 @@ Obtain a user-scoped `FLOW_CODEBLOCK_TOKEN` from your Flow Codeblock administrat
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.9"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.10"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -36,7 +36,7 @@ You can also check startup from a terminal:
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_FLOW_CODEBLOCK_TOKEN>'
-bunx --bun flow-codeblock-rust-mcp@0.1.9
+bunx --bun flow-codeblock-rust-mcp@0.1.10
 ```
 
 After startup the process waits for the client to communicate over stdio; this is expected.
@@ -71,6 +71,8 @@ MCP tools follow this order and do not require the additional Skill:
 If the version changes, the preview is older than 10 minutes, or its contents fail validation, apply is rejected and you must read and preview again. The in-memory preview store keeps at most 256 entries, removes expired entries when accessed, and releases an entry after either successful or failed application.
 
 When creating or changing a script, `interface_doc` must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint.methods`, `endpoint.description`, `request.query`, and `request.headers` are required; use `[]` when there are no parameters. POST documents also require `body.content_type`, `body.schema`, and `body.example`. Every query/header parameter requires `name`, `type`, `required`, `description`, and `example`; every response requires `status`, `description`, `content_type`, `schema`, and `example`. Public script URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`; never put credentials in URLs or examples.
+
+Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP performs one compatibility parse for legacy JSON text, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
 
 Generated code treats `input` as a reserved, read-only runtime binding: never declare, rebind, or shadow it in any scope; use an alias such as `const payload = input` when a local name is needed. Review the complete source for input shadowing before every execution and retry.
 

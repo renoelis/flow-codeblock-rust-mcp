@@ -9,7 +9,7 @@ This project is maintained separately from the existing `flow-codeblock-mcp` rep
 Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.9
+bunx --bun flow-codeblock-rust-mcp@0.1.10
 ```
 
 The MCP client must inject these environment variables before startup:
@@ -30,7 +30,7 @@ Clients that support local stdio MCP servers can use:
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.9"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.10"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -73,6 +73,8 @@ MCP deliberately does not provide script deletion, emergency recovery unlock, to
 The MCP server sends complete tool selection, preview/confirmation, runtime, and documentation rules in the initialization `instructions`, so clients do not need to install the Skill. When creating or changing code, `interface_doc` must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint.methods` and `endpoint.description` describe the interface. `request.query` and `request.headers` are always present; use `[]` when empty. POST documents also require `body.content_type`, `body.schema`, and `body.example`. Every query/header parameter requires `name`, `type`, `description`, `example`, and `required`; every response requires `status`, `description`, `content_type`, `schema`, and `example`.
 
 Script URLs are built from the caller-provided service origin and `/flow/codeblock/{{script_id}}`. `endpoint.path` is relative: omit it when creating and use `/flow/codeblock/<actual-script-id>` when updating. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
+
+Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP accepts one legacy JSON-text parse, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
 
 Patches contain at most 256 `add/remove/replace/move/copy/test` operations and use JSON Pointer paths. Preview results show operation counts, paths, warnings, and version information; they do not echo the merged document.
 

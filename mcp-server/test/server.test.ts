@@ -4,6 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { FlowApiClient } from "../src/api.js";
 import { createMcpServer } from "../src/server.js";
 import { PreviewStore } from "../src/preview-store.js";
+import { interfaceDocCompletenessIssues, normalizeInterfaceDocument } from "../src/interface-doc.js";
 
 type RequestRecord = { method: string; url: string; headers: Headers; body: unknown };
 
@@ -72,6 +73,45 @@ const expectedToolNames = [
 ];
 
 const cjkPattern = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/u;
+
+function completeInterfaceDocument(): Record<string, unknown> {
+  return {
+    schema_version: "script-interface-doc.v1",
+    title: "Example interface",
+    summary: "Returns the submitted value.",
+    endpoint: {
+      methods: ["POST"],
+      description: "Accepts a value and returns it in the response.",
+    },
+    request: {
+      query: [],
+      headers: [],
+      body: {
+        content_type: "application/json",
+        schema: {
+          type: "object",
+          properties: {
+            value: { type: "string", description: "Submitted value.", example: "hello" },
+          },
+        },
+        example: { value: "hello" },
+      },
+    },
+    responses: [{
+      status: 200,
+      description: "The submitted value is returned.",
+      content_type: "application/json",
+      schema: {
+        type: "object",
+        properties: {
+          value: { type: "string", description: "Returned value.", example: "hello" },
+        },
+      },
+      example: { value: "hello" },
+    }],
+    logic_description: "The endpoint reads the submitted value and returns it unchanged.",
+  };
+}
 
 function collectStrings(value: unknown, output: string[] = []): string[] {
   if (typeof value === "string") {
@@ -155,6 +195,19 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(baseUrlSchema?.description).toContain("/flow/codeblock/{{script_id}}");
       expect(listed.tools.find((tool) => tool.name === "flow_execute_code")?.description).toContain("does not require user confirmation");
       expect(listed.tools.find((tool) => tool.name === "flow_execute_code")?.description).toContain("reserved runtime binding");
+      const previewTool = listed.tools.find((tool) => tool.name === "flow_preview_script_change");
+      const interfaceDoc = previewTool?.inputSchema.properties?.interface_doc as Record<string, any>;
+      expect(interfaceDoc.type).toBe("object");
+      expect(interfaceDoc.required).toEqual(expect.arrayContaining([
+        "schema_version",
+        "title",
+        "summary",
+        "endpoint",
+        "request",
+        "responses",
+        "logic_description",
+      ]));
+      expect(previewTool?.inputSchema.definitions?.__schema0.required).toEqual(["type", "description", "example"]);
     } finally {
       await client.close();
       await server.close();
@@ -214,6 +267,58 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(nonScriptPayload.response_format.join(" ")).toContain("never deliver only a patch, diff, or partial snippet");
     expect(payload).not.toHaveProperty("execution_url");
     expect(payload).not.toHaveProperty("script_url");
+    expect(payload.interface_doc_contract?.full_json_schema).toBeDefined();
+  });
+
+  test("parses a legacy interface-document JSON string once", async () => {
+    const document = completeInterfaceDocument();
+    await withMockApi(
+      (request) => {
+        expect(request.method).toBe("POST");
+        expect(request.url).toContain("/flow/scripts/validate");
+        expect(request.body).toMatchObject({ interface_doc: document });
+        return json({ valid: true, interface_doc: document });
+      },
+      async (baseUrl, requests) => {
+        const response = await callTool(baseUrl, "flow_preview_script_change", {
+          operation: "create",
+          code: "return input;",
+          interface_doc: JSON.stringify(document),
+        });
+        expect(response.isError).not.toBe(true);
+        expect(requests).toHaveLength(1);
+      },
+    );
+  });
+
+  test("fills only derivable nested examples and neutral descriptions", () => {
+    const document = completeInterfaceDocument();
+    (document.endpoint as Record<string, unknown>).path = "/flow/codeblock/example";
+    const response = document.responses[0] as Record<string, any>;
+    response.schema = {
+      type: "object",
+      properties: {
+        data: {
+          type: "object",
+          properties: {
+            months: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: { month: { type: "string" } },
+              },
+            },
+          },
+        },
+      },
+    };
+    response.example = { data: { months: [{ month: "2024-01" }] } };
+
+    const normalized = normalizeInterfaceDocument(document);
+    expect(interfaceDocCompletenessIssues(normalized, "update")).toEqual([]);
+    const normalizedData = (normalized as any).responses[0].schema.properties.data;
+    expect(normalizedData.example).toEqual({ months: [{ month: "2024-01" }] });
+    expect(normalizedData.description).toContain("Value for field");
   });
 
   test("publishes the current module contract without removed crypto-js or invalid Excel entries", async () => {

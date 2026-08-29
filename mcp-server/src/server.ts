@@ -13,6 +13,8 @@ import {
   assertInterfaceDocPatch,
   interfaceDocPatchSchema,
   interfaceDocInputDescription,
+  interfaceDocToolInputSchema,
+  normalizeInterfaceDocument,
 } from "./interface-doc.js";
 import { PreviewStore, fingerprint } from "./preview-store.js";
 
@@ -32,8 +34,9 @@ const serverInstructions = [
   "Tool routing: flow_write_code only generates code and its contract; flow_execute_code tests unpublished generated code; flow_execute_script runs published scripts. When the generated code and available safe input are sufficient for a meaningful runtime test, execute it immediately without waiting for user confirmation. If required input or credentials are missing, report that runtime verification was not performed instead of inventing them.",
   "Script workflow: read the current version with flow_get_script before updates; creates require a complete interface_doc, while code or document updates may use a complete interface_doc or an RFC 6902 interface_doc_patch (never both, and patches require expected_version). Preview with flow_preview_script_change, then call flow_apply_script_change(confirm=true) only after explicit user confirmation. Documentation-only changes use flow_preview_script_documentation -> flow_apply_script_documentation.",
   "Preview IDs are single-use and time-limited. On a version conflict, expired preview, or validation failure, stop, read again, and preview again; never retry an old preview_id. Every flow_apply_* call requires confirm=true.",
+  "Interface-document validation reports every discovered nested schema issue in one response; fix the complete list before making another preview call.",
   "script-interface-doc.v1 requires schema_version, title, summary, endpoint, request, responses, and logic_description. endpoint requires methods and description; request.query and request.headers are required arrays (use [] when empty); POST requires request.body and GET-only documents must omit it. JSON Patch supports at most 256 add/remove/replace/move/copy/test operations; preview responses show operation counts and paths, not merged documents.",
-  "Every query parameter and request header requires name, type, required, description, and example. Request bodies and responses require content_type=application/json, schema, and example; every response also requires status and description. Every JSON Schema node declares type, and object schemas and examples must cover each other.",
+  "Every query parameter and request header requires name, type, required, description, and example. Request bodies and responses require content_type=application/json, schema, and example; every response also requires status and description. Every root JSON Schema node declares type; every nested property, array item, and object-form additionalProperties node declares type, description, and example. Arrays must define items, fixed object properties must be covered by the complete example, and additionalProperties=true is reserved for opaque upstream JSON.",
   "Keep endpoint.path relative: omit it on create and use /flow/codeblock/<actual-script-id> on update. Public call URLs use the caller-provided domain plus /flow/codeblock/{{script_id}}; never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.",
   "Script input comes from input.query, input.header, input.body, and input.cookies; for immediate non-script POST /flow/codeblock, body.input becomes global input unchanged. Treat input as a reserved, read-only runtime binding: never declare, redeclare, rebind, or destructure a local binding named input in any scope, including function parameters and nested callbacks. Use an alias such as const payload = input when a local name is needed. Use top-level return by default; use a bare qf_output assignment only for event-style/asynchronous flows or when explicitly requested, never both.",
   "For every initial generation and every later revision in non-script mode, final delivery always includes the complete latest generated JavaScript, even after runtime verification; never return only a patch, diff, or partial snippet. Also include caller-facing invocation instructions, parameters/examples, logic, success/error examples, and execution_url. Script delivery omits JavaScript and raw interface_doc by default and includes invocation instructions, parameters/examples, logic, success/error examples, and the published script_url unless the user asks for source or raw documentation. Code and interface_doc remain internal preview/validation/publication inputs.",
@@ -150,7 +153,7 @@ function withApiErrors(handler: (...args: any[]) => any): (...args: any[]) => Pr
 }
 
 const documentationFields = {
-  document: z.unknown().optional().describe(`Normalized script-interface-doc.v1 JSON. Choose exactly one of document, raw_document, or document_patch; complete documents are required for saves and code updates. ${interfaceDocInputDescription}`),
+  document: interfaceDocToolInputSchema.optional().describe(`Normalized script-interface-doc.v1 JSON object. Choose exactly one of document, raw_document, or document_patch; complete documents are required for saves and code updates. ${interfaceDocInputDescription}`),
   raw_document: z.string().optional().describe("JSON/OpenAPI document text for server parsing. Choose exactly one of document, raw_document, or document_patch; format=json parses JSON."),
   format: z.literal("json").optional().describe("Format of raw_document; only json is supported."),
   document_patch: interfaceDocPatchSchema.optional().describe("RFC 6902 patch for an existing script only. Choose exactly one of document, raw_document, or document_patch."),
@@ -164,7 +167,7 @@ const changeSchema = z.object({
   code_base64: z.string().optional().describe("Non-empty Base64-encoded JavaScript, mutually exclusive with code."),
   description: z.string().optional().describe("Script description. Can be updated without changing code."),
   ip_whitelist: z.array(z.string()).nullable().optional().describe("Source IP/CIDR allowlist. Omit on update to keep the current value; null or [] clears the restriction."),
-  interface_doc: z.unknown().optional().describe(interfaceDocInputDescription),
+  interface_doc: interfaceDocToolInputSchema.optional().describe(interfaceDocInputDescription),
   interface_doc_patch: interfaceDocPatchSchema.optional().describe("RFC 6902 patch for update only; mutually exclusive with interface_doc and forbidden for create."),
   rollback_to_version: z.number().int().positive().optional().describe("Historical version to restore. Use only as a standalone update and never with code, interface_doc, or interface_doc_patch."),
   expected_version: z.number().int().positive().optional().describe("Required for update and must be the current_version from flow_get_script for concurrency protection; forbidden for create."),
@@ -235,6 +238,7 @@ function assertScriptChangeInput(input: z.infer<typeof changeSchema>): void {
     throw new Error("rollback_to_version cannot be combined with code, interface_doc, or interface_doc_patch");
   }
   if (input.interface_doc !== undefined) {
+    input.interface_doc = normalizeInterfaceDocument(input.interface_doc);
     assertCompleteInterfaceDoc(input.interface_doc, input.operation);
   }
   if (input.interface_doc_patch !== undefined) assertInterfaceDocPatch(input.interface_doc_patch);
@@ -294,7 +298,7 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.9" },
+    { name: "flow-codeblock-rust", version: "0.1.10" },
     { instructions: serverInstructions },
   );
 
@@ -307,7 +311,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
         mode: z.enum(["non_script", "script"]).describe("Generation mode. Use non_script for immediate, non-persistent execution; use script for a persistent GET/POST endpoint or HTTP redirects."),
         requirement: z.string().min(1).max(20_000).describe("Complete business requirements, input fields, expected output, external APIs, synchronization/async needs, and error behavior. Include only requirements relevant to this code."),
         input_example: z.unknown().optional().describe("Business input example. In script mode it helps generate request.body/schema/example; in non_script mode it supplies flow_execute_code test input. Never include real credentials."),
-        include_full_schema: z.boolean().optional().describe("Whether to include the complete JSON Schema in the response; defaults to false. The generated interface document still contains all required fields."),
+        include_full_schema: z.boolean().optional().describe("Whether to include the complete recursive JSON Schema in the response; defaults to true for script mode to avoid a follow-up schema call. Set false only when the caller already has the schema."),
         base_url: z.string().url().refine((value) => {
           try {
             const parsed = new URL(value);
@@ -322,7 +326,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
       },
     },
     async ({ mode, requirement, input_example, include_full_schema, base_url }) => {
-      const context = codeWriterContext(mode, requirement, input_example, include_full_schema ?? false, base_url);
+      const context = codeWriterContext(mode, requirement, input_example, include_full_schema ?? mode === "script", base_url);
       return result(mode === "non_script" ? { ...context, execution_url: executionUrl(api) } : context);
     },
   );
@@ -397,6 +401,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     withApiErrors(async (input) => {
       const parsed = documentationSchema.parse(input);
       if (parsed.document !== undefined) {
+        parsed.document = normalizeInterfaceDocument(parsed.document);
         assertCompleteInterfaceDoc(parsed.document, "update");
       }
       if (parsed.document_patch !== undefined) assertInterfaceDocPatch(parsed.document_patch);
@@ -520,6 +525,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     },
     withApiErrors(async (input) => {
       const parsed = documentationSchema.parse(input);
+      if (parsed.document !== undefined) parsed.document = normalizeInterfaceDocument(parsed.document);
       const expectedVersion = await fetchCurrentVersion(api, parsed.script_id);
       if (parsed.document_patch !== undefined && parsed.expected_version !== expectedVersion) {
         throw new Error(`Script version changed from ${parsed.expected_version} to ${expectedVersion}; read and preview again`);

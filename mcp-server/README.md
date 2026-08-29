@@ -7,7 +7,7 @@ Local stdio MCP server for Flow Codeblock Rust+Bun. It calls the server-side Rus
 Bun 1.4.0 or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.9
+bunx --bun flow-codeblock-rust-mcp@0.1.10
 ```
 
 Configure the environment:
@@ -26,7 +26,7 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.9"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.10"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_INTERNAL_ACCESS_TOKEN>"
@@ -55,6 +55,8 @@ MCP does not provide script deletion, emergency recovery unlock, token lookup, e
 At initialization the server sends complete tool selection, preview/confirmation, runtime, and interface-documentation rules through MCP `instructions`. Clients should prefer tool descriptions and input-schema field descriptions instead of guessing parameters through trial and error.
 
 Interface documents must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint` requires `methods` and `description`; `request.query` and `request.headers` must exist (use `[]` when empty). POST documents also require `request.body` with `content_type`, `schema`, and `example`. Every response requires `status`, `description`, `content_type`, `schema`, and `example`; every query/header parameter requires `name`, `type`, `required`, `description`, and `example`.
+
+Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP accepts one legacy JSON-text parse, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
 
 `endpoint.path` is relative: omit it when creating and use `/flow/codeblock/<actual-script-id>` when updating. Public request URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
 

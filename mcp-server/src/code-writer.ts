@@ -84,7 +84,7 @@ export const interfaceDocSchema = {
       additionalProperties: false,
       properties: {
         content_type: { const: "application/json" },
-        schema: {},
+        schema: { $ref: "#/$defs/schema_root" },
         example: {},
       },
     },
@@ -96,29 +96,67 @@ export const interfaceDocSchema = {
         status: { type: "integer", minimum: 100, maximum: 599 },
         description: { type: "string", minLength: 1, maxLength: 4000 },
         content_type: { const: "application/json" },
-        schema: {},
+        schema: { $ref: "#/$defs/schema_root" },
         example: {},
+      },
+    },
+    schema_root: {
+      type: "object",
+      required: ["type"],
+      additionalProperties: true,
+      properties: {
+        type: { type: "string", minLength: 1 },
+        description: { type: "string", minLength: 1 },
+        example: {},
+        properties: { type: "object", additionalProperties: { $ref: "#/$defs/schema_node" } },
+        items: { $ref: "#/$defs/schema_node" },
+        additionalProperties: { anyOf: [{ $ref: "#/$defs/schema_node" }, { type: "boolean" }] },
+        required: { type: "array", items: { type: "string" } },
+      },
+    },
+    schema_node: {
+      type: "object",
+      required: ["type", "description", "example"],
+      additionalProperties: true,
+      properties: {
+        type: { type: "string", minLength: 1 },
+        description: { type: "string", minLength: 1 },
+        example: {},
+        properties: { type: "object", additionalProperties: { $ref: "#/$defs/schema_node" } },
+        items: { $ref: "#/$defs/schema_node" },
+        additionalProperties: { anyOf: [{ $ref: "#/$defs/schema_node" }, { type: "boolean" }] },
+        required: { type: "array", items: { type: "string" } },
       },
     },
   },
 };
 
-function schemaFromExample(value: unknown): Record<string, unknown> {
+function schemaFromExample(value: unknown, fieldName = "value"): Record<string, unknown> {
+  const metadata = { description: `Value for ${fieldName}.`, example: structuredClone(value) };
   if (Array.isArray(value)) {
-    return { type: "array", items: value.length > 0 ? schemaFromExample(value[0]) : { type: "string" } };
+    return {
+      type: "array",
+      ...metadata,
+      items: value.length > 0 ? schemaFromExample(value[0], `${fieldName} item`) : {
+        type: "string",
+        description: `Value for ${fieldName} item.`,
+        example: "",
+      },
+    };
   }
   if (value !== null && typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>);
     return {
       type: "object",
-      properties: Object.fromEntries(entries.map(([key, item]) => [key, schemaFromExample(item)])),
+      ...metadata,
+      properties: Object.fromEntries(entries.map(([key, item]) => [key, schemaFromExample(item, key)])),
       required: entries.map(([key]) => key),
       additionalProperties: false,
     };
   }
-  if (value === null) return { type: "null" };
-  if (typeof value === "number") return { type: Number.isInteger(value) ? "integer" : "number" };
-  return { type: typeof value };
+  if (value === null) return { type: "null", ...metadata };
+  if (typeof value === "number") return { type: Number.isInteger(value) ? "integer" : "number", ...metadata };
+  return { type: typeof value, ...metadata };
 }
 
 export function codeWriterContext(
