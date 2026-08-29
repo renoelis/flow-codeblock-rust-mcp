@@ -9,7 +9,7 @@ This project is maintained separately from the existing `flow-codeblock-mcp` rep
 Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.6
+bunx --bun flow-codeblock-rust-mcp@0.1.7
 ```
 
 The MCP client must inject these environment variables before startup:
@@ -30,7 +30,7 @@ Clients that support local stdio MCP servers can use:
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.6"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.7"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -56,7 +56,7 @@ plugins/flow-codeblock-rust/skills/flow-codeblock-rust/SKILL.md
 
 The Skill requires the workflow `read current version -> preview -> server validation -> explicit user confirmation -> apply`. Updates use `expected_version` for concurrency protection. Interface documentation supports RFC 6902 `interface_doc_patch`; patches are mutually exclusive with complete documents and are forbidden for creates. On a version conflict, expired preview, or validation failure, read again and create a new preview.
 
-Final delivery is mode-specific. `non_script` returns complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. `script` omits JavaScript and raw `interface_doc` by default and returns invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`. Script code and `interface_doc` remain internal inputs to MCP preview, validation, and publication unless the user explicitly requests source or raw documentation.
+When generated code and the available safe input are sufficient for a meaningful runtime test, the client executes it immediately without waiting for user confirmation. If required input or credentials are missing, it reports that runtime verification was not performed instead of inventing them. Final delivery is mode-specific. `non_script` always returns the complete generated JavaScript, even after runtime verification, plus invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. `script` omits JavaScript and raw `interface_doc` by default and returns invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`. Script code and `interface_doc` remain internal inputs to MCP preview, validation, and publication unless the user explicitly requests source or raw documentation.
 
 ## Tool boundaries
 

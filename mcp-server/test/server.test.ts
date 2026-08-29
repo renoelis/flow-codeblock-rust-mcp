@@ -121,7 +121,8 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(instructions).toContain("flow_preview_script_change");
       expect(instructions).toContain("/flow/codeblock/{{script_id}}");
       expect(instructions).toContain("content_type=application/json");
-      expect(instructions).toContain("Non-script delivery includes complete JavaScript");
+      expect(instructions).toContain("execute it immediately without waiting for user confirmation");
+      expect(instructions).toContain("always includes the complete generated JavaScript in the final response");
       expect(instructions).toContain("Script delivery omits JavaScript and raw interface_doc by default");
       expect(instructions).toContain("error.details");
       expect(instructions).toContain("lineContent");
@@ -143,10 +144,12 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(collectStrings(instructions).some((value) => cjkPattern.test(value))).toBe(false);
       const writeCode = listed.tools.find((tool) => tool.name === "flow_write_code");
       expect(writeCode?.description).toContain("complete script-interface-doc.v1");
+      expect(writeCode?.description).toContain("always deliver the complete generated JavaScript");
       expect(writeCode?.description).toContain("Script delivery includes invocation instructions");
       expect(writeCode?.inputSchema.properties?.base_url).toBeDefined();
       const baseUrlSchema = writeCode?.inputSchema.properties?.base_url as { description?: string } | undefined;
       expect(baseUrlSchema?.description).toContain("/flow/codeblock/{{script_id}}");
+      expect(listed.tools.find((tool) => tool.name === "flow_execute_code")?.description).toContain("does not require user confirmation");
     } finally {
       await client.close();
       await server.close();
@@ -198,7 +201,11 @@ describe("Flow Codeblock Rust MCP", () => {
       requirement: "处理输入并返回结果",
     });
     const nonScriptText = (nonScript.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
-    expect(JSON.parse(nonScriptText).execution_url).toBe("http://127.0.0.1:3003/flow/codeblock");
+    const nonScriptPayload = JSON.parse(nonScriptText);
+    expect(nonScriptPayload.execution_url).toBe("http://127.0.0.1:3003/flow/codeblock");
+    expect(nonScriptPayload.verification_rule).toContain("run a meaningful execution test immediately");
+    expect(nonScriptPayload.rule).toContain("do not wait for user confirmation");
+    expect(nonScriptPayload.response_format.join(" ")).toContain("always deliver the complete generated JavaScript");
     expect(payload).not.toHaveProperty("execution_url");
     expect(payload).not.toHaveProperty("script_url");
   });

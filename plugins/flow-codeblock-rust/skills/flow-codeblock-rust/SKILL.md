@@ -27,7 +27,7 @@ This Skill works with the plugin's local stdio MCP server. The MCP server calls 
 - `flow_preview_script_documentation` / `flow_apply_script_documentation`: preview, confirm, and save interface documentation.
 - `flow_lock_script` / `flow_unlock_script`: use an owner name and lock password; `confirm: true` is required.
 - `flow_execute_script`: execute a published script with GET/POST, query, headers, body, and timeout_ms.
-- `flow_execute_code`: execute unpublished non-script code; use only when a test is explicitly requested.
+- `flow_execute_code`: execute unpublished generated code with mode-appropriate input.
 
 ## Script change workflow
 
@@ -55,6 +55,6 @@ Read these references before generating or changing scripts:
 
 ## Code-generation rules
 
-User code must read input from `input` and return through top-level `return` or a valid `qf_output`; use only allowed modules and follow code, input, result, and timeout limits. Script mode internally generates executable JavaScript and a submit-ready `interface_doc` JSON for preview, validation, and publication. Final output hides JavaScript and raw `interface_doc` by default and shows invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url` unless source or raw documentation is explicitly requested. Non-script mode shows complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error examples, and `execution_url`.
+User code must read input from `input` and return through top-level `return` or a valid `qf_output`; use only allowed modules and follow code, input, result, and timeout limits. After generating code, run a meaningful execution test immediately when the available requirement and safe input are sufficient; execution-only verification does not require user confirmation. If required input or credentials are missing, report that runtime verification was not performed instead of inventing them. Script mode internally generates executable JavaScript and a submit-ready `interface_doc` JSON for preview, validation, and publication. Final output hides JavaScript and raw `interface_doc` by default and shows invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url` unless source or raw documentation is explicitly requested. Non-script mode always shows the complete generated JavaScript in the final response, even after runtime verification, plus invocation instructions, request parameters and examples, execution logic, success/error examples, and `execution_url`.
 
 Use Bun-native `fetch` or real axios for network requests and `node:crypto` for cryptography; never generate the removed `crypto-js`. Constructor-based code generation, `process.env`, and `fs`/`node:fs` are forbidden. Excel imports are limited to `read-excel-file/node`, `read-excel-file/universal`, `write-excel-file/node`, `write-excel-file/universal`, and `write-excel-file/utility`; do not use the root, browser, or web-worker entry points of these packages.

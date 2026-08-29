@@ -7,7 +7,7 @@ Local stdio MCP server for Flow Codeblock Rust+Bun. It calls the server-side Rus
 Bun 1.4.0 or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.6
+bunx --bun flow-codeblock-rust-mcp@0.1.7
 ```
 
 Configure the environment:
@@ -26,7 +26,7 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.6"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.7"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_INTERNAL_ACCESS_TOKEN>"
@@ -42,7 +42,7 @@ The code contract follows the current Rust+Bun module allowlist. `crypto-js` has
 
 The tools cover code-contract generation, unpublished-code tests, script listing, version reads, documentation validation/preview/save, script creation/update, locking/unlocking, and published-script execution. Creates and code updates can submit a complete interface document or RFC 6902 `interface_doc_patch`; preview calls `/flow/scripts/validate`, and apply re-submits patches with transactional `expected_version` conflict detection. Every script write requires a preview and explicit `confirm: true`.
 
-Final delivery is mode-specific. `non_script` returns complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. `script` omits JavaScript and raw `interface_doc` by default and returns invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`. Script code and `interface_doc` remain internal inputs to MCP preview, validation, and publication unless the user explicitly requests source or raw documentation.
+When generated code and the available safe input are sufficient for a meaningful runtime test, the client executes it immediately without waiting for user confirmation. If required input or credentials are missing, it reports that runtime verification was not performed instead of inventing them. Final delivery is mode-specific. `non_script` always returns the complete generated JavaScript, even after runtime verification, plus invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. `script` omits JavaScript and raw `interface_doc` by default and returns invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`. Script code and `interface_doc` remain internal inputs to MCP preview, validation, and publication unless the user explicitly requests source or raw documentation.
 
 Execution errors preserve a concise `message` and verified user-code locations in `error.details.line`, `error.details.column`, and `error.details.lineContent` with one-based line and column numbers. Source location, matched text, and source line are not duplicated in security-policy messages. The details are omitted when the location cannot be verified; direct parse and execution-policy failures use `SyntaxError` and `SecurityError` respectively and return HTTP 422 with `retryable: false`.
 

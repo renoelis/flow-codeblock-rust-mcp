@@ -19,7 +19,7 @@ Obtain a user-scoped `FLOW_CODEBLOCK_TOKEN` from your Flow Codeblock administrat
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.6"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.7"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -36,7 +36,7 @@ You can also check startup from a terminal:
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_FLOW_CODEBLOCK_TOKEN>'
-bunx --bun flow-codeblock-rust-mcp@0.1.6
+bunx --bun flow-codeblock-rust-mcp@0.1.7
 ```
 
 After startup the process waits for the client to communicate over stdio; this is expected.
@@ -72,7 +72,7 @@ If the version changes, the preview is older than 10 minutes, or its contents fa
 
 When creating or changing a script, `interface_doc` must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint.methods`, `endpoint.description`, `request.query`, and `request.headers` are required; use `[]` when there are no parameters. POST documents also require `body.content_type`, `body.schema`, and `body.example`. Every query/header parameter requires `name`, `type`, `required`, `description`, and `example`; every response requires `status`, `description`, `content_type`, `schema`, and `example`. Public script URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`; never put credentials in URLs or examples.
 
-Final delivery is mode-specific. Non-script mode shows complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error examples, and `execution_url`. Script mode hides JavaScript and raw `interface_doc` by default and shows invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`, unless the user explicitly asks for source or raw documentation.
+When generated code and the available safe input are sufficient for a meaningful runtime test, the client executes it immediately without waiting for user confirmation. If required input or credentials are missing, it reports that runtime verification was not performed instead of inventing them. Final delivery is mode-specific. Non-script mode always shows the complete generated JavaScript, even after runtime verification, plus invocation instructions, request parameters and examples, execution logic, success/error examples, and `execution_url`. Script mode hides JavaScript and raw `interface_doc` by default and shows invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`, unless the user explicitly asks for source or raw documentation.
 
 ## 5. Security notes
 

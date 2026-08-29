@@ -196,6 +196,7 @@ export function codeWriterContext(
       "Return only plain serializable values or Promises; do not return circular references, BigInt, functions, Symbols, unhandled complex class instances, or unbounded arrays/strings.",
       "The platform places immediate-interface return values in the outer HTTP response's result field; script interfaces usually return the business value directly. Prefer { success: true, data: value } or { success: false, error: message }.",
     ],
+    verification_rule: "After generating code, run a meaningful execution test immediately when the available requirement and safe input are sufficient; execution-only verification does not require user confirmation. If required input or credentials are missing, state that runtime verification was not performed instead of inventing them.",
     allowed_modules: allowedModules,
   };
   if (mode === "non_script") {
@@ -211,12 +212,12 @@ export function codeWriterContext(
         "Generate immediate non_script mode when the user does not specify a mode.",
         "If the requirement includes an HTTP redirect, use script mode with /flow/codeblock/{{script_id}}.",
       ],
-      deliverables: ["A javascript code block containing executable JavaScript only", "Input and output contracts"],
+      deliverables: ["A complete javascript code block containing executable JavaScript only", "Input and output contracts"],
       test_tool: { name: "flow_execute_code", arguments: { code: "<JavaScript>", input: inputExample ?? {}, timeout_ms: 3000 } },
-      rule: "Do not call flow_execute_code unless the user explicitly requests a test.",
+      rule: "Call flow_execute_code immediately when the available requirement and safe input are sufficient for a meaningful test; do not wait for user confirmation.",
       response_format: [
         "Unless the user explicitly requests code only, explain the mode and output first, then provide the JavaScript code block, followed by request/response examples.",
-        "For non_script interfaces, deliver complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error output examples, and execution_url.",
+        "For non_script interfaces, always deliver the complete generated JavaScript in the final response, even after runtime verification, plus invocation instructions, request parameters and examples, execution logic, success/error output examples, and execution_url.",
       ],
     };
   }
@@ -273,7 +274,7 @@ export function codeWriterContext(
       "For updates, call flow_get_script first to read the current version; for documentation updates, flow_get_script_documentation may be called first.",
       "Generate code and a complete interface_doc together; call flow_preview_script_change once for a create or code update.",
       "Call flow_apply_script_change or flow_apply_script_documentation only after explicit user confirmation, with confirm=true.",
-      "Call flow_execute_script only when the user requests a test of a published script; call flow_execute_code only to test unpublished code.",
+      "When the available requirement and safe input are sufficient for a meaningful test, immediately call flow_execute_code for unpublished code or flow_execute_script for published code; execution-only verification does not require user confirmation.",
       "On a version conflict, expired preview, or validation failure, stop and read/preview again; never retry an old preview_id.",
     ],
     response_format: [
