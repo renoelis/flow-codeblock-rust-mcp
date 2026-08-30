@@ -154,6 +154,22 @@ describe("script preview tool", () => {
     expect(properties.storeInfo.example).toEqual({ id: "STORE-001" });
   });
 
+  test("accepts a legacy JSON-text interface document", async () => {
+    const response = await client.callTool({
+      name: "flow_preview_script_change",
+      arguments: {
+        operation: "create",
+        code: "return { success: true };",
+        interface_doc: JSON.stringify(misplacedInterfaceDoc()),
+      },
+    });
+
+    expect(response.isError).not.toBe(true);
+    expect(validationRequest?.interface_doc).toEqual(expect.objectContaining({
+      schema_version: "script-interface-doc.v1",
+    }));
+  });
+
   test("returns a script URL derived from FLOW_CODEBLOCK_BASE_URL after create", async () => {
     const previewResponse = await client.callTool({
       name: "flow_preview_script_change",

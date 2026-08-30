@@ -45,6 +45,7 @@ export const interfaceDocRepairRules = [
 
 export const interfaceDocInputDescription = [
   "A complete script-interface-doc.v1 is required for create and code updates; description and ip_whitelist-only updates may omit it.",
+  "Submit interface_doc as a native JSON object. Legacy JSON text is accepted and parsed once by MCP for compatibility; malformed JSON remains invalid.",
   "Root fields are schema_version='script-interface-doc.v1', title, summary, endpoint, request?, responses, logic_description, and usage_refs?. endpoint={methods,path?,description}; request={query?,headers?,body?}; query and headers are parameter arrays; body={content_type='application/json',schema,example}; each response={status,description,content_type='application/json',schema,example}.",
   "usage_refs is only for real application references, each shaped as {app_name,app_id?,location?,note?}; put normal prose in logic_description, not a string array in usage_refs.",
   `Required structure: ${Object.entries(interfaceDocRequiredFields).map(([key, fields]) => `${key}=[${fields.join(",")}]`).join("; ")}.`,
@@ -108,7 +109,7 @@ export const interfaceDocPatchSchema = z.array(interfaceDocPatchOperationSchema)
   .max(256)
   .describe("An ordered RFC 6902 JSON Patch operation array; mutually exclusive with a complete interface_doc.");
 
-export const interfaceDocToolInputSchema = z.looseObject({
+const interfaceDocToolInputObjectSchema = z.looseObject({
   schema_version: z.literal("script-interface-doc.v1").optional().describe("The fixed document contract version."),
   title: z.string().optional().describe("The interface-document title."),
   summary: z.string().optional().describe("A one-sentence caller-facing summary."),
@@ -127,7 +128,22 @@ export const interfaceDocToolInputSchema = z.looseObject({
   usage_refs: z.array(z.unknown()).optional().describe(
     "Array of real application references, each {app_name,app_id?,location?,note?}; do not put ordinary prose here.",
   ),
-}).describe(interfaceDocInputDescription);
+});
+
+function parseLegacyJsonDocument(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+// Keep the advertised object shape while accepting one legacy JSON string parse.
+export const interfaceDocToolInputSchema = z.preprocess(
+  parseLegacyJsonDocument,
+  interfaceDocToolInputObjectSchema,
+).describe(interfaceDocInputDescription);
 
 export function assertInterfaceDocPatch(patch: unknown): void {
   const parsed = interfaceDocPatchSchema.safeParse(patch);
