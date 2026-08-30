@@ -9,7 +9,7 @@ This project is maintained separately from the existing `flow-codeblock-mcp` rep
 Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.11
+bunx --bun flow-codeblock-rust-mcp@0.1.12
 ```
 
 The MCP client must inject these environment variables before startup:
@@ -30,7 +30,7 @@ Clients that support local stdio MCP servers can use:
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.11"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.12"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -72,7 +72,9 @@ MCP deliberately does not provide script deletion, emergency recovery unlock, to
 
 The MCP server sends complete tool selection, preview/confirmation, runtime, and documentation rules in the initialization `instructions`, so clients do not need to install the Skill. When creating or changing code, `interface_doc` must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint.methods` and `endpoint.description` describe the interface. `request.query` and `request.headers` are always present; use `[]` when empty. POST documents also require `body.content_type`, `body.schema`, and `body.example`. Every query/header parameter requires `name`, `type`, `description`, `example`, and `required`; every response requires `status`, `description`, `content_type`, `schema`, and `example`.
 
-Script URLs are built from the caller-provided service origin and `/flow/codeblock/{{script_id}}`. `endpoint.path` is relative: omit it when creating and use `/flow/codeblock/<actual-script-id>` when updating. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
+Script URLs are built from the caller-provided service origin and `/flow/codeblock/{{script_id}}`. `endpoint.path` is relative and omitted when creating; on update MCP canonicalizes it from `script_id` to `/flow/codeblock/<actual-script-id>`. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
+
+Script runtime input is an envelope: POST body fields are at `input.body`, query parameters at `input.query`, headers at `input.header`, and cookies at `input.cookies`. `flow_execute_code` uses the raw `body.input` business object for non-script code; script-mode verification must pass the envelope shape so it matches published execution.
 
 Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP accepts one legacy JSON-text parse, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
 

@@ -166,13 +166,15 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(instructions).toContain("never return only a patch, diff, or partial snippet");
       expect(instructions).toContain("Never generate RegExp.exec or .exec(...)");
       expect(instructions).toContain("reserved, read-only runtime binding");
-      expect(instructions).toContain("const payload = input");
+      expect(instructions).toContain("const payload = envelope.body");
       expect(instructions).toContain("Script delivery omits JavaScript and raw interface_doc by default");
       expect(instructions).toContain("error.details");
       expect(instructions).toContain("lineContent");
       expect(instructions).toContain("Bun-native fetch");
       expect(instructions).toContain("constructor-based code generation");
       expect(instructions).toContain("fs/node:fs");
+      expect(instructions).toContain("flow_execute_code uses body.input unchanged as the direct business object");
+      expect(instructions).toContain("published /flow/codeblock/{script_id} always injects an envelope");
       const listed = await client.listTools();
       expect(listed.tools).toHaveLength(expectedToolNames.length);
       expect(new Set(listed.tools.map((tool) => tool.name))).toEqual(new Set(expectedToolNames));
@@ -270,6 +272,24 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(payload.interface_doc_contract?.full_json_schema).toBeDefined();
   });
 
+  test("publishes an envelope-shaped script verification input", async () => {
+    const response = await callTool("http://127.0.0.1:3003", "flow_write_code", {
+      mode: "script",
+      requirement: "Return the month range for two dates.",
+      input_example: { start_date: "2024-01-15", end_date: "2024-04-10" },
+    });
+    const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
+    const payload = JSON.parse(text) as Record<string, any>;
+    expect(payload.input_contract.script_binding_rule).toContain("input.body.<field>");
+    expect(payload.input_contract.script_binding_template).toContain("envelope.body");
+    expect(payload.test_tool.arguments.input).toEqual({
+      body: { start_date: "2024-01-15", end_date: "2024-04-10" },
+      query: {},
+      header: {},
+      cookies: {},
+    });
+  });
+
   test("parses a legacy interface-document JSON string once", async () => {
     const document = completeInterfaceDocument();
     await withMockApi(
@@ -287,6 +307,33 @@ describe("Flow Codeblock Rust MCP", () => {
         });
         expect(response.isError).not.toBe(true);
         expect(requests).toHaveLength(1);
+      },
+    );
+  });
+
+  test("canonicalizes update paths and legacy envelope wording before preview", async () => {
+    await withMockApi(
+      (request) => {
+        if (request.method === "GET") return json({ current_version: 1 });
+        expect(request.method).toBe("POST");
+        const body = request.body as Record<string, any>;
+        expect(body.interface_doc.endpoint.path).toBe("/flow/codeblock/abc");
+        expect(body.interface_doc.logic_description).not.toContain("input.body");
+        return json({ valid: true, interface_doc: body.interface_doc });
+      },
+      async (baseUrl, requests) => {
+        const document = completeInterfaceDocument();
+        (document.endpoint as Record<string, unknown>).path = "/flow/codeblock/{script_id}";
+        document.logic_description = "Read input.body and return the submitted value unchanged.";
+        const response = await callTool(baseUrl, "flow_preview_script_change", {
+          operation: "update",
+          script_id: "abc",
+          expected_version: 1,
+          code: "return input.body;",
+          interface_doc: document,
+        });
+        expect(response.isError).not.toBe(true);
+        expect(requests.map((request) => request.method)).toEqual(["GET", "POST"]);
       },
     );
   });

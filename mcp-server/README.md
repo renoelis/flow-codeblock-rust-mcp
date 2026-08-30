@@ -7,7 +7,7 @@ Local stdio MCP server for Flow Codeblock Rust+Bun. It calls the server-side Rus
 Bun 1.4.0 or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.11
+bunx --bun flow-codeblock-rust-mcp@0.1.12
 ```
 
 Configure the environment:
@@ -26,7 +26,7 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.11"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.12"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_INTERNAL_ACCESS_TOKEN>"
@@ -58,7 +58,9 @@ Interface documents must include `schema_version`, `title`, `summary`, `endpoint
 
 Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP accepts one legacy JSON-text parse, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
 
-`endpoint.path` is relative: omit it when creating and use `/flow/codeblock/<actual-script-id>` when updating. Public request URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
+`endpoint.path` is relative and omitted when creating; on update MCP canonicalizes it from `script_id` to `/flow/codeblock/<actual-script-id>`. Public request URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
+
+Script runtime input is an envelope: POST body fields are at `input.body`, query parameters at `input.query`, headers at `input.header`, and cookies at `input.cookies`. `flow_execute_code` uses the raw `body.input` business object for non-script code; script-mode verification must pass the envelope shape so it matches published execution.
 
 `interface_doc_patch` and `document_patch` require a positive integer `expected_version` and support at most 256 `add/remove/replace/move/copy/test` operations. Patch previews return operation counts, JSON Pointer paths, warnings, and version information, never the complete merged document.
 

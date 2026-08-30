@@ -19,7 +19,7 @@ Obtain a user-scoped `FLOW_CODEBLOCK_TOKEN` from your Flow Codeblock administrat
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.11"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.12"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -36,7 +36,7 @@ You can also check startup from a terminal:
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_FLOW_CODEBLOCK_TOKEN>'
-bunx --bun flow-codeblock-rust-mcp@0.1.11
+bunx --bun flow-codeblock-rust-mcp@0.1.12
 ```
 
 After startup the process waits for the client to communicate over stdio; this is expected.
@@ -70,11 +70,13 @@ MCP tools follow this order and do not require the additional Skill:
 
 If the version changes, the preview is older than 10 minutes, or its contents fail validation, apply is rejected and you must read and preview again. The in-memory preview store keeps at most 256 entries, removes expired entries when accessed, and releases an entry after either successful or failed application.
 
-When creating or changing a script, `interface_doc` must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint.methods`, `endpoint.description`, `request.query`, and `request.headers` are required; use `[]` when there are no parameters. POST documents also require `body.content_type`, `body.schema`, and `body.example`. Every query/header parameter requires `name`, `type`, `required`, `description`, and `example`; every response requires `status`, `description`, `content_type`, `schema`, and `example`. Public script URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`; never put credentials in URLs or examples.
+When creating or changing a script, `interface_doc` must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint.methods`, `endpoint.description`, `request.query`, and `request.headers` are required; use `[]` when there are no parameters. POST documents also require `body.content_type`, `body.schema`, and `body.example`. Every query/header parameter requires `name`, `type`, `required`, `description`, and `example`; every response requires `status`, `description`, `content_type`, `schema`, and `example`. Public script URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`; never put credentials in URLs or examples. On update MCP canonicalizes `endpoint.path` from `script_id` before validation.
+
+Script runtime input is an envelope: POST body fields are at `input.body`, query parameters at `input.query`, headers at `input.header`, and cookies at `input.cookies`. `flow_execute_code` uses the raw `body.input` business object for non-script code; script-mode verification must pass the envelope shape so it matches published execution.
 
 Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP performs one compatibility parse for legacy JSON text, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
 
-Generated code treats `input` as a reserved, read-only runtime binding: never declare, rebind, or shadow it in any scope; use an alias such as `const payload = input` when a local name is needed. Review the complete source for input shadowing before every execution and retry.
+Generated code treats `input` as a reserved, read-only runtime binding: never declare, rebind, or shadow it in any scope. Non-script code may alias it directly; published script code must read the request body through `input.body` and can use `const envelope = input || {}; const payload = envelope.body || {};`. Review the complete source for input shadowing before every execution and retry.
 
 The authoring context treats forbidden identifiers as forbidden in properties and method calls too; for example, generated code uses `text.match(regex)` or `regex.test(text)` instead of `RegExp.exec`. When generated code and the available safe input are sufficient for a meaningful runtime test, the client executes it immediately without waiting for user confirmation. If required input or credentials are missing, it reports that runtime verification was not performed instead of inventing them. Final delivery is mode-specific. Every initial non-script generation and every later revision returns the complete latest generated JavaScript, never only a patch, diff, or partial snippet, even after runtime verification; it also includes invocation instructions, request parameters and examples, execution logic, success/error examples, and `execution_url`. Script mode hides JavaScript and raw `interface_doc` by default and shows invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`, unless the user explicitly asks for source or raw documentation.
 

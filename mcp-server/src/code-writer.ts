@@ -273,10 +273,21 @@ export function codeWriterContext(
       mapping: {
         query: "input.query; a single value is a string and repeated parameters are string arrays; do not include qingcodeToken or qingcodeTimeout.",
         headers: "input.header; the server filters x-original-cookie; use cookie when a Cookie value is needed.",
-        body: "input.body; POST JSON request body, defaulting to {}; send business data directly without wrapping it as input or input.body.",
+        body: "input.body; POST JSON request body, defaulting to {}; callers send business data directly as the HTTP body, never wrapped as { input: ... } or { body: ... }.",
         cookies: "input.cookies; a cookie name/value object that may be absent when no cookies are supplied.",
       },
+      script_binding_rule: "Published script code receives the envelope, not the raw business body. Read body fields from input.body.<field>, query values from input.query.<field>, headers from input.header.<field>, and cookies from input.cookies.<name>; input.<business_field> is always wrong.",
+      script_binding_template: "const envelope = input || {}; const payload = envelope.body && typeof envelope.body === \"object\" && !Array.isArray(envelope.body) ? envelope.body : {};",
       reserved_query: ["qingcodeToken", "qingcodeTimeout"],
+    },
+    test_tool: {
+      name: "flow_execute_code",
+      arguments: {
+        code: "<generated code>",
+        input: { body: bodyExample, query: {}, header: {}, cookies: {} },
+        timeout_ms: 3000,
+      },
+      rule: "For script-mode code, use this envelope-shaped input so unpublished verification matches published execution. Direct non_script code uses the raw business object instead.",
     },
     endpoint_url_template: normalizedBaseUrl
       ? `${normalizedBaseUrl}${endpointPathTemplate}`
@@ -297,6 +308,9 @@ export function codeWriterContext(
       strict_preview_gate: true,
       required_fields: interfaceDocRequiredFields,
       nested_rules: interfaceDocNestedRules,
+      common_schema_mistakes: [
+        "Put the sample payload in the schema node's example field, not in schema.properties.example unless example is a real business field.",
+      ],
       body_example_schema: schemaFromExample(bodyExample),
       full_json_schema: includeFullSchema ? interfaceDocSchema : undefined,
       patch_json_schema: includeFullSchema ? interfaceDocPatchJsonSchema : undefined,

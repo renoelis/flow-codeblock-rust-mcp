@@ -9,27 +9,28 @@ export const interfaceDocRequiredFields = {
   parameter: ["name", "type", "required", "description", "example"],
   body: ["content_type", "schema", "example"],
   response: ["status", "description", "content_type", "schema", "example"],
-  optional: ["endpoint.path (omit on create; actual relative path on update)", "usage_refs"],
+  optional: ["endpoint.path (omit on create; MCP canonicalizes it from script_id on update)", "usage_refs"],
 };
 
 export const interfaceDocNestedRules = [
   "title is the document title; summary is a one-sentence summary; endpoint.description explains the callable interface; logic_description explains the business logic.",
   "request.query and request.headers are always present arrays; use [] when the interface has no query or header parameters.",
-  "Each query/header parameter requires name, type, required, description, and example. Do not use the internal input.query/input.header/input.body/input.cookies names in the caller-facing document.",
+  "Each query/header parameter requires name, type, required, description, and example. Use caller-facing request terms in prose; MCP rewrites legacy input.query/input.header/input.body/input.cookies references when normalizing a document.",
   "For POST, request.body is required and content_type must be application/json; for GET-only documents, omit request.body.",
   "Each response requires status, description, content_type, schema, and example. Describe every response shape returned by the script, including errors when applicable.",
   "Every JSON Schema node declares type. Object schemas use properties for fixed fields or a complete additionalProperties schema for dynamic keys.",
   "Every array schema has items. Object array items have complete properties, and every example item covers those properties.",
   "At every nesting level, schema properties and example fields cover each other. Optional properties still appear in the complete example.",
+  "schema.example is metadata on the schema node; do not add an example field under schema.properties unless example is an actual business field.",
   "required contains only runtime-required fields. Use separate responses when success and error payloads have different shapes.",
 ];
 
 export const interfaceDocInputDescription = [
   "A complete script-interface-doc.v1 document is required when creating a script, changing code, or saving documentation.",
-  "Submit interface_doc/document as a JSON object. Legacy JSON text is accepted and parsed once by MCP for compatibility. MCP fills nested examples only from matching parent examples, uses a neutral description when one is omitted, and never guesses a missing type.",
+  "Submit interface_doc/document as a JSON object. Legacy JSON text is accepted and parsed once by MCP for compatibility. MCP fills nested examples only from matching parent examples, uses a neutral description when one is omitted, rewrites legacy internal input references in prose, and never guesses a missing type.",
   `Required structure: ${Object.entries(interfaceDocRequiredFields).map(([key, fields]) => `${key}=[${fields.join(", ")}]`).join("; ")}.`,
   ...interfaceDocNestedRules,
-  "endpoint.path is relative and must be /flow/codeblock/<actual-script-id> on update; the final public URL is the caller-provided domain followed by /flow/codeblock/<script-id>.",
+  "endpoint.path is relative; omit it on create. On update MCP canonicalizes it to /flow/codeblock/<actual-script-id> from script_id before validation; the final public URL is the caller-provided domain followed by /flow/codeblock/<script-id>.",
   "Never include real tokens, passwords, cookies, Authorization values, or other credentials in the document or examples.",
 ].join(" ");
 
@@ -204,7 +205,7 @@ function normalizeSchemaNode(
 
 export function normalizeInterfaceDocument(document: unknown): unknown {
   if (!isObject(document)) return document;
-  const normalized = structuredClone(document) as JsonObject;
+  const normalized = normalizeCallerFacingTerms(structuredClone(document)) as JsonObject;
   const containers: JsonObject[] = [];
   if (isObject(normalized.request) && isObject(normalized.request.body)) {
     containers.push(normalized.request.body);
@@ -362,24 +363,29 @@ function validateParameters(value: unknown, path: string, issues: string[]): voi
   });
 }
 
-function rejectInternalInputTerms(value: unknown, path: string, issues: string[]): void {
+function normalizeCallerFacingTerms(value: unknown, key?: string): unknown {
+  if (key === "example") return structuredClone(value);
   if (typeof value === "string") {
-    if (/\binput\.(?:query|header|body|cookies)\b/i.test(value)) {
-      issues.push(`${path} must describe the caller contract, not the internal input envelope`);
+    return value
+      .replace(/\binput\.query\b/gi, "query parameters")
+      .replace(/\binput\.header\b/gi, "request headers")
+      .replace(/\binput\.body\b/gi, "request body")
+      .replace(/\binput\.cookies\b/gi, "cookies");
+  }
+  if (Array.isArray(value)) return value.map((item) => normalizeCallerFacingTerms(item));
+  if (isObject(value)) {
+    const output: JsonObject = {};
+    for (const [childKey, child] of Object.entries(value)) {
+      output[childKey] = normalizeCallerFacingTerms(child, childKey);
     }
-    return;
+    return output;
   }
-  if (Array.isArray(value)) {
-    value.forEach((item, index) => rejectInternalInputTerms(item, `${path}[${index}]`, issues));
-  } else if (isObject(value)) {
-    for (const [key, item] of Object.entries(value)) rejectInternalInputTerms(item, `${path}.${key}`, issues);
-  }
+  return value;
 }
 
 export function interfaceDocCompletenessIssues(document: unknown, operation: "create" | "update"): string[] {
   const issues: string[] = [];
   if (!isObject(document)) return ["interface_doc must be a JSON object"];
-  rejectInternalInputTerms(document, "interface_doc", issues);
   if (document.schema_version !== "script-interface-doc.v1") {
     issues.push("interface_doc.schema_version must be script-interface-doc.v1");
   }

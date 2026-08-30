@@ -37,8 +37,8 @@ const serverInstructions = [
   "Interface-document validation reports every discovered nested schema issue in one response; fix the complete list before making another preview call.",
   "script-interface-doc.v1 requires schema_version, title, summary, endpoint, request, responses, and logic_description. endpoint requires methods and description; request.query and request.headers are required arrays (use [] when empty); POST requires request.body and GET-only documents must omit it. JSON Patch supports at most 256 add/remove/replace/move/copy/test operations; preview responses show operation counts and paths, not merged documents.",
   "Every query parameter and request header requires name, type, required, description, and example. Request bodies and responses require content_type=application/json, schema, and example; every response also requires status and description. Every root JSON Schema node declares type; every nested property, array item, and object-form additionalProperties node declares type, description, and example. Arrays must define items, fixed object properties must be covered by the complete example, and additionalProperties=true is reserved for opaque upstream JSON.",
-  "Keep endpoint.path relative: omit it on create and use /flow/codeblock/<actual-script-id> on update. Public call URLs use the caller-provided domain plus /flow/codeblock/{{script_id}}; never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.",
-  "Script input comes from input.query, input.header, input.body, and input.cookies; for immediate non-script POST /flow/codeblock, body.input becomes global input unchanged. Treat input as a reserved, read-only runtime binding: never declare, redeclare, rebind, or destructure a local binding named input in any scope, including function parameters and nested callbacks. Use an alias such as const payload = input when a local name is needed. Use top-level return by default; use a bare qf_output assignment only for event-style/asynchronous flows or when explicitly requested, never both.",
+  "Keep endpoint.path relative and omit it on create; on update MCP canonicalizes it to /flow/codeblock/<actual-script-id> from script_id. Public call URLs use the caller-provided domain plus /flow/codeblock/{{script_id}}; never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.",
+  "Execution input differs by mode: flow_execute_code uses body.input unchanged as the direct business object; published /flow/codeblock/{script_id} always injects an envelope with business body at input.body, query parameters at input.query, headers at input.header, and cookies at input.cookies when present. Script code must never read business fields as input.<field>; use const envelope = input || {}; const payload = envelope.body && typeof envelope.body === \"object\" && !Array.isArray(envelope.body) ? envelope.body : {};. Treat input as a reserved, read-only runtime binding: never declare, redeclare, rebind, or destructure a local binding named input in any scope, including function parameters and nested callbacks. Use top-level return by default; use a bare qf_output assignment only for event-style/asynchronous flows or when explicitly requested, never both.",
   "For every initial generation and every later revision in non-script mode, final delivery always includes the complete latest generated JavaScript, even after runtime verification; never return only a patch, diff, or partial snippet. Also include caller-facing invocation instructions, parameters/examples, logic, success/error examples, and execution_url. Script delivery omits JavaScript and raw interface_doc by default and includes invocation instructions, parameters/examples, logic, success/error examples, and the published script_url unless the user asks for source or raw documentation. Code and interface_doc remain internal preview/validation/publication inputs.",
   "Prefer native JavaScript, URL/URLSearchParams, Bun-native fetch, and node:crypto; crypto-js has been removed. Treat every forbidden identifier as forbidden in every syntactic position, including property names and method calls. Never generate RegExp.exec or .exec(...); use text.match(regex) for capture groups or regex.test(text) for boolean checks. Before execution, review the complete source and rewrite every forbidden identifier, member, or module. Do not generate browser APIs, timers, dynamic module loading, constructor-based code generation, or blacklisted Node modules (including fs/node:fs). Excel imports are limited to read-excel-file/node, read-excel-file/universal, write-excel-file/node, write-excel-file/universal, and write-excel-file/utility. Check HTTP status and handle JSON, text, and empty responses; await or return every async task.",
   "Script execution accepts only GET or POST. MCP authentication, cookies, CSRF, proxy-source headers, and test-tool markers are filtered. There is no script deletion, emergency unlock, or arbitrary HTTP proxy tool; direct those requests to the web UI or controlled REST/operations flow.",
@@ -91,14 +91,21 @@ function encodeCode(code: string | undefined, codeBase64: string | undefined): s
   return codeBase64;
 }
 
-function removeCreatePath(document: unknown): unknown {
-  if (!document || typeof document !== "object" || Array.isArray(document)) return document;
-  const copy = structuredClone(document) as Record<string, unknown>;
-  const endpoint = copy.endpoint;
-  if (endpoint && typeof endpoint === "object" && !Array.isArray(endpoint)) {
+function canonicalizeInterfaceDocument(
+  document: unknown,
+  operation: "create" | "update",
+  scriptId?: string,
+): unknown {
+  const normalized = normalizeInterfaceDocument(document);
+  if (!normalized || typeof normalized !== "object" || Array.isArray(normalized)) return normalized;
+  const endpoint = (normalized as Record<string, unknown>).endpoint;
+  if (!endpoint || typeof endpoint !== "object" || Array.isArray(endpoint)) return normalized;
+  if (operation === "create") {
     delete (endpoint as Record<string, unknown>).path;
+  } else if (scriptId) {
+    (endpoint as Record<string, unknown>).path = `/flow/codeblock/${scriptId}`;
   }
-  return copy;
+  return normalized;
 }
 
 const reservedExecutionHeaders = new Set([
@@ -238,7 +245,7 @@ function assertScriptChangeInput(input: z.infer<typeof changeSchema>): void {
     throw new Error("rollback_to_version cannot be combined with code, interface_doc, or interface_doc_patch");
   }
   if (input.interface_doc !== undefined) {
-    input.interface_doc = normalizeInterfaceDocument(input.interface_doc);
+    input.interface_doc = canonicalizeInterfaceDocument(input.interface_doc, input.operation, input.script_id);
     assertCompleteInterfaceDoc(input.interface_doc, input.operation);
   }
   if (input.interface_doc_patch !== undefined) assertInterfaceDocPatch(input.interface_doc_patch);
@@ -298,7 +305,7 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.11" },
+    { name: "flow-codeblock-rust", version: "0.1.12" },
     { instructions: serverInstructions },
   );
 
@@ -401,7 +408,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     withApiErrors(async (input) => {
       const parsed = documentationSchema.parse(input);
       if (parsed.document !== undefined) {
-        parsed.document = normalizeInterfaceDocument(parsed.document);
+        parsed.document = canonicalizeInterfaceDocument(parsed.document, "update", parsed.script_id);
         assertCompleteInterfaceDoc(parsed.document, "update");
       }
       if (parsed.document_patch !== undefined) assertInterfaceDocPatch(parsed.document_patch);
@@ -440,7 +447,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
         ...(parsed.description !== undefined ? { description: parsed.description } : {}),
         ...(parsed.ip_whitelist !== undefined ? { ip_whitelist: parsed.ip_whitelist } : {}),
         ...(parsed.interface_doc !== undefined
-          ? { interface_doc: parsed.operation === "create" ? removeCreatePath(parsed.interface_doc) : parsed.interface_doc }
+          ? { interface_doc: parsed.interface_doc }
           : {}),
         ...(parsed.interface_doc_patch !== undefined ? { interface_doc_patch: parsed.interface_doc_patch } : {}),
         ...(parsed.rollback_to_version !== undefined ? { rollback_to_version: parsed.rollback_to_version } : {}),
@@ -526,7 +533,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     withApiErrors(async (input) => {
       const parsed = documentationSchema.parse(input);
       if (parsed.document !== undefined) {
-        parsed.document = normalizeInterfaceDocument(parsed.document);
+        parsed.document = canonicalizeInterfaceDocument(parsed.document, "update", parsed.script_id);
         assertCompleteInterfaceDoc(parsed.document, "update");
       }
       const expectedVersion = await fetchCurrentVersion(api, parsed.script_id);
@@ -636,7 +643,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     "flow_execute_script",
     {
       title: "Execute published script",
-      description: "Execute a published script when requested or when the available safe input is sufficient to verify newly generated code; execution-only verification does not require user confirmation. method must be GET or POST; the result includes a complete script_url built from FLOW_CODEBLOCK_BASE_URL and script_id. Array query values become repeated parameters, and a POST body is sent as JSON. User-code failures preserve verified error.details source locations when available. MCP authentication, cookies, CSRF, proxy-source headers, and test-tool markers are filtered; qingcodeToken and qingcodeTimeout cannot be supplied as business parameters.",
+      description: "Execute a published script when requested or when the available safe input is sufficient to verify newly generated code; execution-only verification does not require user confirmation. method must be GET or POST; the result includes a complete script_url built from FLOW_CODEBLOCK_BASE_URL and script_id. A POST body is sent directly and is exposed to script code at input.body; query, header, and cookie values are exposed at input.query, input.header, and input.cookies. User-code failures preserve verified error.details source locations when available. MCP authentication, cookies, CSRF, proxy-source headers, and test-tool markers are filtered; qingcodeToken and qingcodeTimeout cannot be supplied as business parameters.",
       inputSchema: {
         script_id: z.string().min(1).describe("Published script ID; the tool calls /flow/codeblock/{script_id}."),
         method: z.enum(["GET", "POST"]).default("POST").describe("Script request method, either GET or POST; defaults to POST."),
