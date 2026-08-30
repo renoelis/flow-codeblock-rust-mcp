@@ -311,6 +311,44 @@ describe("script preview tool", () => {
     expect(updateRequest?.expected_version).toBe(1);
   });
 
+  test("previews and applies a code-only update while preserving the current document", async () => {
+    const scriptId = "code-only-update";
+    const code = "return { success: true, updated: true };";
+    const encodedCode = Buffer.from(code, "utf8").toString("base64");
+    const previewResponse = await client.callTool({
+      name: "flow_preview_script_change",
+      arguments: {
+        operation: "update",
+        script_id: scriptId,
+        expected_version: 1,
+        code,
+      },
+    });
+
+    expect(previewResponse.isError).not.toBe(true);
+    const previewContent = previewResponse.content.find((item) => item.type === "text");
+    if (!previewContent || previewContent.type !== "text") throw new Error("preview did not return text");
+    const preview = JSON.parse(previewContent.text) as Record<string, unknown>;
+    expect(preview.changes).toMatchObject({
+      code: "provided",
+      interface_doc: false,
+      interface_doc_patch: false,
+    });
+    expect(validationRequest).toMatchObject({ script_id: scriptId, code_base64: encodedCode });
+    expect(validationRequest).not.toHaveProperty("interface_doc");
+    expect(validationRequest).not.toHaveProperty("interface_doc_patch");
+
+    const applyResponse = await client.callTool({
+      name: "flow_apply_script_change",
+      arguments: { preview_id: preview.preview_id, confirm: true },
+    });
+    expect(applyResponse.isError).not.toBe(true);
+    expect(updateRequest).toMatchObject({ code_base64: encodedCode, expected_version: 1 });
+    expect(updateRequest).not.toHaveProperty("script_id");
+    expect(updateRequest).not.toHaveProperty("interface_doc");
+    expect(updateRequest).not.toHaveProperty("interface_doc_patch");
+  });
+
   test("rejects server environment access before API validation", async () => {
     for (const code of [
       "return process.env.BAIDU_MAP_AK;",

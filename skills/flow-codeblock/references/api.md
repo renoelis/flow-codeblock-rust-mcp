@@ -162,7 +162,7 @@ Common `error.details` fields are `field`/`reason`, `retryAfter` for rate limiti
 ### Token-authenticated script management
 
 - `POST /flow/scripts`: create with `code_base64`, optional `description`, `ip_whitelist`, and a complete `interface_doc`; creation stores code and documentation as version 1 and does not accept patches.
-- `PUT /flow/scripts/{scriptId}`: update with optional `expected_version`, code, description, IP allowlist, complete `interface_doc`, mutually exclusive `interface_doc_patch`, or `rollback_to_version`. Code and rollback are mutually exclusive. Identical code changes only metadata and return `code_changed=false`; locked scripts return 423.
+- `PUT /flow/scripts/{scriptId}`: update with optional `expected_version`, code, description, IP allowlist, complete `interface_doc`, mutually exclusive `interface_doc_patch`, or `rollback_to_version`. Code-only updates preserve the current interface document. Code and rollback are mutually exclusive. Identical code changes only metadata and return `code_changed=false`; locked scripts return 423.
 - `POST /flow/scripts/validate`: authenticate, normalize, and validate code/document inputs without database writes or execution quota consumption. It accepts complete `interface_doc` or `interface_doc_patch`, not both.
 - `DELETE /flow/scripts/{scriptId}`: allowed only when unlocked; locked scripts return `ScriptLockedError`.
 - `POST /flow/scripts/{scriptId}/lock`: requires `{owner_name,lock_password}`; owner names are trimmed, limited to 64 characters, and cannot contain control characters; lock passwords are 6-128 bytes and are stored as a hash.

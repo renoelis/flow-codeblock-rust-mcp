@@ -44,7 +44,7 @@ export const interfaceDocRepairRules = [
 ];
 
 export const interfaceDocInputDescription = [
-  "A complete script-interface-doc.v1 is required for create and code updates; description and ip_whitelist-only updates may omit it.",
+  "A complete script-interface-doc.v1 is required for create; updates may omit it when preserving the current document, including code-only updates. ip_whitelist-only updates may omit it; description-only updates may also omit it.",
   "Submit interface_doc as a native JSON object. Legacy JSON text is accepted and parsed once by MCP for compatibility; malformed JSON remains invalid.",
   "Root fields are schema_version='script-interface-doc.v1', title, summary, endpoint, request?, responses, logic_description, and usage_refs?. endpoint={methods,path?,description}; request={query?,headers?,body?}; query and headers are parameter arrays; body={content_type='application/json',schema,example}; each response={status,description,content_type='application/json',schema,example}.",
   "usage_refs is only for real application references, each shaped as {app_name,app_id?,location?,note?}; put normal prose in logic_description, not a string array in usage_refs.",

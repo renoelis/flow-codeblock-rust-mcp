@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://flow-codeblock.local/schemas/script-interface-doc.v1.json",
   "title": "Flow Script Interface Document v1 - MCP Complete Contract",
-  "$comment": "MCP create and code updates use this complete contract. Omit request when there are no actual parameters; include it when parameters or a POST body must be documented.",
+  "$comment": "MCP creates and interface-contract updates use this complete contract. Code-only updates may omit the document and preserve the current one. Omit request when there are no actual parameters; include it when parameters or a POST body must be documented.",
   "type": "object",
   "required": ["schema_version", "title", "summary", "endpoint", "responses", "logic_description"],
   "additionalProperties": false,

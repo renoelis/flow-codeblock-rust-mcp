@@ -43,13 +43,13 @@ Recommended business results are `{ success: true, data: value }` or `{ success:
 
 ## Script interface documents
 
-Script mode must create an independent `script-interface-doc.v1` JSON object and submit it through `interface_doc`. Create and code updates require a complete document; existing-document field-only updates may use RFC 6902 `interface_doc_patch` containing only changed JSON Pointer operations. Do not echo code or the submitted document in the final user response unless explicitly requested.
+Script mode must create an independent `script-interface-doc.v1` JSON object and submit it through `interface_doc` for creates and interface-contract changes. Code-only updates may omit both documentation fields and preserve the current document; existing-document field-only updates may use RFC 6902 `interface_doc_patch` containing only changed JSON Pointer operations. Do not echo code or the submitted document in the final user response unless explicitly requested.
 
 The JSON must match `script-interface-doc.schema.json`. The document root contains only `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, `logic_description`, and `usage_refs`. `request` contains only `query`, `headers`, and `body`; `ip_whitelist` is a tool argument, not a document field. Use caller-facing URL query parameters, HTTP headers, HTTP body, and Cookies in prose.
 
 Before previewing, perform one complete recursive self-check:
 
-- Required root fields are `schema_version`, `title`, `summary`, `endpoint`, `responses`, and `logic_description`; `request` and `usage_refs` are optional when not applicable.
+- Required root fields are `schema_version`, `title`, `summary`, `endpoint`, `responses`, and `logic_description` whenever `interface_doc` is submitted; `request` and `usage_refs` are optional when not applicable.
 - `endpoint` requires `methods` and `description`; methods are only `GET` and `POST`. Create may omit `endpoint.path`; update must use the actual `/flow/codeblock/{script_id}` path.
 - Every parameter requires `name`, `type`, `required`, `description`, and `example`. A POST body and every response require `content_type`, `schema`, and `example`.
 - Every Schema node requires `type`, `description`, and `example` except the root node's description metadata when the runtime validator allows it. Every array requires a complete `items` node. Known object keys use `properties`; homogeneous runtime-key dictionaries use object-form `additionalProperties`; opaque pass-through upstream objects may use `additionalProperties: true`.
@@ -60,8 +60,8 @@ Do not rely on repeated preview calls to discover missing fields. If normalizati
 
 ## Script change workflow
 
-1. For create, generate code and a complete document. For update, first call `flow_get_script` and `flow_get_script_documentation` with only `script_id`; use the returned `current_version` as `expected_version`. Use a patch for field-only documentation changes.
-2. Call `flow_preview_script_change` once the code and document have passed the recursive self-check. Explicitly set `operation` when possible. Create has no `script_id` or `expected_version`; update has both and at least one change. `interface_doc` and `interface_doc_patch` are mutually exclusive.
+1. For create, generate code and a complete document. For update, first call `flow_get_script` with only `script_id`; use the returned `current_version` as `expected_version`. Read `flow_get_script_documentation` when changing or confirming the contract. Code-only updates may omit both documentation fields and preserve the current document. Use a patch for field-only documentation changes.
+2. Call `flow_preview_script_change` once the submitted code/document fields have passed the recursive self-check. Explicitly set `operation` when possible. Create has no `script_id` or `expected_version`; update has both and at least one change. `interface_doc` and `interface_doc_patch` are mutually exclusive, and both may be omitted for code-only updates.
 3. Display the successful preview and wait for explicit user confirmation.
 4. Call `flow_apply_script_change` with the same `preview_id` and `confirm=true`. After create, call `flow_execute_script` only when execution was requested.
 

@@ -36,6 +36,13 @@ describe("codeWriterContext", () => {
     expect(rules.content).toContain("Keep successful and error shapes in separate responses");
   });
 
+  test("allows code-only persistent updates to preserve the current document", () => {
+    const context = codeWriterContext("script", "更新现有脚本代码");
+    const rules = objectField(context, "authoritative_rules");
+    expect(rules.content).toContain("Code-only updates may omit both documentation fields");
+    expect(rules.content).toContain("both may be omitted for code-only updates");
+  });
+
   test("requires complete latest source after every non-script update", () => {
     const context = codeWriterContext("non_script", "更新现有代码");
     const rules = objectField(context, "authoritative_rules");

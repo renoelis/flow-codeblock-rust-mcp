@@ -50,9 +50,6 @@ export function assertScriptChangeInput(input: ScriptChangeInput): void {
     ) {
       throw new Error("Update preview must include code, description, ip_whitelist, interface_doc, or interface_doc_patch");
     }
-    if (hasCode && input.interface_doc === undefined && input.interface_doc_patch === undefined) {
-      throw new Error("Updating code requires interface_doc or interface_doc_patch");
-    }
   }
 
   if (input.interface_doc !== undefined) {

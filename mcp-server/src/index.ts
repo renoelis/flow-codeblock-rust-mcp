@@ -401,7 +401,7 @@ const serverInstructions = [
 ].join("\n");
 
 const server = new McpServer(
-  { name: "flow-codeblock", version: "2.0.1" },
+  { name: "flow-codeblock", version: "2.0.2" },
   { instructions: serverInstructions },
 );
 
@@ -413,7 +413,7 @@ server.registerTool(
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       mode: z.enum(["non_script", "script"]).describe(
-        "Generation mode. Use non_script when unspecified for immediate, non-persistent execution. Use script for persistent create/update or HTTP redirects and produce a separate interface document.",
+        "Generation mode. Use non_script when unspecified for immediate, non-persistent execution. Use script for persistent create/update or HTTP redirects; creates and interface-contract changes need a separate interface document, while code-only updates may preserve the current document.",
       ),
       requirement: z.string().min(1).max(20_000).describe(
         "The complete business requirement, input fields, expected output, external APIs, and edge cases. Script mode does not require a caller domain; publishing uses FLOW_CODEBLOCK_BASE_URL to return script_url. Do not include access tokens.",
@@ -508,7 +508,7 @@ server.registerTool(
   "flow_get_script_documentation",
   {
     title: "Get the current script interface document",
-    description: "Read the script-interface-doc.v1 for the current script version. Pass only script_id; the current document is version-independent. Read it before changing code or documentation and preserve valid fields. document may be null when none is saved; use flow_get_script_documentation_version for history.",
+    description: "Read the script-interface-doc.v1 for the current script version. Pass only script_id; the current document is version-independent. Read it before changing documentation or when confirming a code contract; code-only updates may omit it and preserve the current document. document may be null when none is saved; use flow_get_script_documentation_version for history.",
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       script_id: z.string().min(1).describe("Target script ID from a script list, a create result, or the user."),
@@ -601,14 +601,14 @@ server.registerTool(
 
 const changeSchema = {
   operation: z.enum(["create", "update"]).optional().describe(
-    "Prefer explicit operation: create adds a script and update changes an existing script. If omitted, MCP infers create without script_id and update with script_id. Create requires code/code_base64 and a complete interface_doc and forbids script_id/expected_version; update requires script_id/expected_version and exactly one of interface_doc or interface_doc_patch.",
+    "Prefer explicit operation: create adds a script and update changes an existing script. If omitted, MCP infers create without script_id and update with script_id. Create requires code/code_base64 and a complete interface_doc and forbids script_id/expected_version; update requires script_id/expected_version and at least one change, while interface_doc and interface_doc_patch are optional and mutually exclusive.",
   ),
   script_id: z.string().min(1).optional().describe("Required for update and forbidden for create; target script ID."),
   code: z.string().min(1).optional().describe(
-    "UTF-8 JavaScript source, mutually exclusive with code_base64. Script code reads requests from input.query/header/body/cookies and returns a JSON-serializable value with top-level return; it must not read process.env. Third-party API keys must be caller inputs. Code updates require a complete interface_doc or interface_doc_patch.",
+    "UTF-8 JavaScript source, mutually exclusive with code_base64. Script code reads requests from input.query/header/body/cookies and returns a JSON-serializable value with top-level return; it must not read process.env. Third-party API keys must be caller inputs. On update, code may be submitted without interface_doc or interface_doc_patch to preserve the current document.",
   ),
   code_base64: z.string().min(1).optional().describe(
-    "Base64-encoded UTF-8 JavaScript, mutually exclusive with code; prefer code when possible. Code updates require a complete interface_doc or interface_doc_patch.",
+    "Base64-encoded UTF-8 JavaScript, mutually exclusive with code; prefer code when possible. On update, code may be submitted without interface_doc or interface_doc_patch to preserve the current document.",
   ),
   description: z.string().optional().describe(
     "Script list display name/description. For create, summarize to at most 15 characters only when the user did not provide a name; preserve an explicitly supplied longer name. Changing description alone does not create a new version.",
@@ -635,7 +635,7 @@ server.registerTool(
   "flow_preview_script_change",
   {
     title: "Preview and validate a script change",
-    description: "Required step 1 for every script create or update. It does not write the database or consume execution quota and returns a preview_id valid for 10 minutes. Call flow_write_code(mode=script) first when code and the document contract are not ready. For updates, use interface_doc_patch for field-only changes. The tool performs deterministic normalization and validation; a successful preview_id means normalized content is already stored with preview_ready=true and requires_repreview=false, so do not rewrite or preview again. Create requires code/code_base64 and a complete interface_doc without script_id/expected_version. Update requires a freshly read script_id and expected_version plus at least one change. Keep interface_doc and interface_doc_patch mutually exclusive and omit ip_whitelist for documentation-only updates. Show the successful preview to the user; never publish automatically. MCP does not provide deletion.",
+    description: "Required step 1 for every script create or update. It does not write the database or consume execution quota and returns a preview_id valid for 10 minutes. Call flow_write_code(mode=script) first when code and the document contract are not ready. For updates, use interface_doc_patch for field-only documentation changes; code-only updates may omit both document fields and preserve the current document. The tool performs deterministic normalization and validation; a successful preview_id means normalized content is already stored with preview_ready=true and requires_repreview=false, so do not rewrite or preview again. Create requires code/code_base64 and a complete interface_doc without script_id/expected_version. Update requires a freshly read script_id and expected_version plus at least one change. Keep interface_doc and interface_doc_patch mutually exclusive and omit ip_whitelist for documentation-only updates. Show the successful preview to the user; never publish automatically. MCP does not provide deletion.",
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     inputSchema: changeSchema,
   },
