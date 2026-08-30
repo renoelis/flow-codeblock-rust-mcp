@@ -7,7 +7,7 @@ Local stdio MCP server and Codex Skill for Flow Codeblock. The MCP server calls 
 Requires Bun 1.4.0 or newer:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@2.0.3
+bunx --bun flow-codeblock-rust-mcp@2.0.4
 ```
 
 Required environment:
@@ -30,7 +30,7 @@ When `FLOW_CODEBLOCK_OWNER_NAME` is configured, `owner_name` may be omitted from
   "mcpServers": {
     "flow-codeblock": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.3"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.4"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://qingcode.oalite.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>",
@@ -42,6 +42,8 @@ When `FLOW_CODEBLOCK_OWNER_NAME` is configured, `owner_name` may be omitted from
 ```
 
 The npm package includes the MCP runtime, the `flow-codeblock` Skill, `AGENT_PROMPT.md`, module and dangerous-pattern rules, and interface-document Schemas. Ordinary MCP clients do not install the Codex Skill automatically; `flow_write_code` reads the authoritative authoring and dangerous-pattern rules from the package at runtime and returns both.
+
+The Flow Codeblock web test tool's MCP documentation link is configured on the Rust service with `TEST_TOOL_MCP_DOC_URL`.
 
 ## Calling rules
 
