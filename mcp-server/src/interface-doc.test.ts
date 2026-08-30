@@ -499,4 +499,19 @@ describe("interfaceDocPatch", () => {
       { op: "add", path: "/summary", value: "x", extra: true },
     ])).toThrow("Invalid interface_doc_patch format");
   });
+
+  test("rejects non-string usage reference values before the API call", () => {
+    const invalidPatches = [
+      [{ op: "add", path: "/usage_refs/0/app_id", value: 98701 }],
+      [{ op: "add", path: "/usage_refs/0", value: { app_name: "test001", app_id: 98701 } }],
+      [{ op: "replace", path: "/usage_refs", value: [{ app_name: "test001", app_id: 98701 }] }],
+    ];
+
+    for (const patch of invalidPatches) {
+      expect(() => assertInterfaceDocPatch(patch)).toThrow("must be a string when provided");
+    }
+    expect(() => assertInterfaceDocPatch([
+      { op: "add", path: "/usage_refs/0", value: { app_name: "test001", app_id: "98701" } },
+    ])).not.toThrow();
+  });
 });

@@ -50,6 +50,7 @@ The JSON must match `script-interface-doc.schema.json`. The document root contai
 Before previewing, perform one complete recursive self-check:
 
 - Required root fields are `schema_version`, `title`, `summary`, `endpoint`, `responses`, and `logic_description` whenever `interface_doc` is submitted; `request` and `usage_refs` are optional when not applicable.
+- Each `usage_refs` entry is `{app_name, app_id?, location?, note?}`; every provided value is a string, including `app_id` (write numeric-looking IDs such as `"98701"`, never `98701`).
 - `endpoint` requires `methods` and `description`; methods are only `GET` and `POST`. Create may omit `endpoint.path`; update must use the actual `/flow/codeblock/{script_id}` path.
 - Every parameter requires `name`, `type`, `required`, `description`, and `example`. A POST body and every response require `content_type`, `schema`, and `example`.
 - Every Schema node requires `type`, `description`, and `example` except the root node's description metadata when the runtime validator allows it. Every array requires a complete `items` node. Known object keys use `properties`; homogeneous runtime-key dictionaries use object-form `additionalProperties`; opaque pass-through upstream objects may use `additionalProperties: true`.

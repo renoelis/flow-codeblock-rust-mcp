@@ -47,7 +47,7 @@ export const interfaceDocInputDescription = [
   "A complete script-interface-doc.v1 is required for create; updates may omit it when preserving the current document, including code-only updates. ip_whitelist-only updates may omit it; description-only updates may also omit it.",
   "Submit interface_doc as a native JSON object. Legacy JSON text is accepted and parsed once by MCP for compatibility; malformed JSON remains invalid.",
   "Root fields are schema_version='script-interface-doc.v1', title, summary, endpoint, request?, responses, logic_description, and usage_refs?. endpoint={methods,path?,description}; request={query?,headers?,body?}; query and headers are parameter arrays; body={content_type='application/json',schema,example}; each response={status,description,content_type='application/json',schema,example}.",
-  "usage_refs is only for real application references, each shaped as {app_name,app_id?,location?,note?}; put normal prose in logic_description, not a string array in usage_refs.",
+  "usage_refs is only for real application references, each shaped as {app_name,app_id?,location?,note?}; all provided fields are strings, including app_id (quote numeric-looking IDs such as \"98701\"); put normal prose in logic_description, not a string array in usage_refs.",
   `Required structure: ${Object.entries(interfaceDocRequiredFields).map(([key, fields]) => `${key}=[${fields.join(",")}]`).join("; ")}.`,
   ...interfaceDocRepairRules,
   ...interfaceDocNestedRules,
@@ -107,7 +107,7 @@ const interfaceDocPatchOperationSchema = z.union([
 export const interfaceDocPatchSchema = z.array(interfaceDocPatchOperationSchema)
   .min(1)
   .max(256)
-  .describe("An ordered RFC 6902 JSON Patch operation array; mutually exclusive with a complete interface_doc.");
+  .describe("An ordered RFC 6902 JSON Patch operation array; mutually exclusive with a complete interface_doc. Values under /usage_refs must follow the interface document contract; app_id is a string, not a number (use \"98701\").");
 
 const interfaceDocToolInputObjectSchema = z.looseObject({
   schema_version: z.literal("script-interface-doc.v1").optional().describe("The fixed document contract version."),
@@ -126,7 +126,7 @@ const interfaceDocToolInputObjectSchema = z.looseObject({
   responses: z.array(responseInputSchema).optional().describe("Complete response branches at the interface_doc root."),
   logic_description: z.string().optional().describe("Endpoint processing logic at the interface_doc root; at least 20 characters."),
   usage_refs: z.array(z.unknown()).optional().describe(
-    "Array of real application references, each {app_name,app_id?,location?,note?}; do not put ordinary prose here.",
+    "Array of real application references, each {app_name,app_id?,location?,note?}; app_name, app_id, location, and note are strings, and numeric-looking app_id values must be quoted (for example, \"98701\"); do not put ordinary prose here.",
   ),
 });
 
@@ -145,11 +145,48 @@ export const interfaceDocToolInputSchema = z.preprocess(
   interfaceDocToolInputObjectSchema,
 ).describe(interfaceDocInputDescription);
 
+const usageRefFields = new Set(["app_id", "app_name", "location", "note"]);
+const usageRefFieldPathPattern = /^\/usage_refs\/(?:\d+|-)\/(app_id|app_name|location|note)$/;
+const usageRefItemPathPattern = /^\/usage_refs\/(?:\d+|-)$/;
+
+function assertUsageRefString(path: string, value: unknown): void {
+  if (typeof value !== "string") {
+    throw new Error(`${path} must be a string when provided; quote numeric-looking IDs such as "98701"`);
+  }
+}
+
+function assertUsageRefObject(path: string, value: unknown): void {
+  if (!isObject(value)) return;
+  for (const field of usageRefFields) {
+    if (value[field] !== undefined) assertUsageRefString(`${path}/${field}`, value[field]);
+  }
+}
+
+function assertUsageRefPatchValues(patch: unknown[]): void {
+  for (const operation of patch) {
+    if (!isObject(operation) || !["add", "replace", "test"].includes(String(operation.op))) continue;
+    if (typeof operation.path !== "string" || !Object.prototype.hasOwnProperty.call(operation, "value")) continue;
+
+    if (usageRefFieldPathPattern.test(operation.path)) {
+      assertUsageRefString(`interface_doc_patch ${operation.path}`, operation.value);
+      continue;
+    }
+    if (usageRefItemPathPattern.test(operation.path)) {
+      assertUsageRefObject(`interface_doc_patch ${operation.path}`, operation.value);
+      continue;
+    }
+    if (operation.path === "/usage_refs" && Array.isArray(operation.value)) {
+      operation.value.forEach((value, index) => assertUsageRefObject(`interface_doc_patch /usage_refs/${index}`, value));
+    }
+  }
+}
+
 export function assertInterfaceDocPatch(patch: unknown): void {
   const parsed = interfaceDocPatchSchema.safeParse(patch);
   if (!parsed.success) {
     throw new Error(`Invalid interface_doc_patch format: ${parsed.error.message}`);
   }
+  assertUsageRefPatchValues(parsed.data);
 }
 
 function isObject(value: unknown): value is JsonObject {

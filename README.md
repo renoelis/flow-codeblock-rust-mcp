@@ -7,7 +7,7 @@ Local stdio MCP server and Codex Skill for Flow Codeblock. The MCP server calls 
 Requires Bun 1.4.0 or newer:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@2.0.2
+bunx --bun flow-codeblock-rust-mcp@2.0.3
 ```
 
 Required environment:
@@ -30,7 +30,7 @@ When `FLOW_CODEBLOCK_OWNER_NAME` is configured, `owner_name` may be omitted from
   "mcpServers": {
     "flow-codeblock": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.2"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.3"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://qingcode.oalite.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>",
@@ -51,6 +51,7 @@ The npm package includes the MCP runtime, the `flow-codeblock` Skill, `AGENT_PRO
 - Use `flow_get_script` with only `script_id` for the current version. Use history tools only for an explicitly requested version. The MCP server decodes valid `code_base64` to UTF-8 `code`.
 - POST script execution receives the caller's business JSON directly as `body`; do not wrap it in `input` or `input.body`.
 - Third-party API keys are business inputs supplied through the documented body, query, or business headers. User code must not read `process.env`; `FLOW_CODEBLOCK_TOKEN` is platform authentication only.
+- In `interface_doc.usage_refs`, `app_name`, `app_id`, `location`, and `note` are strings; quote numeric-looking IDs such as `"98701"`.
 - All JSON outputs recursively redact credential fields such as `token`, `access_token`, `authorization`, `refresh_token`, and `qingcodeToken`. Statistics such as `token_cache` and `unique_tokens` are not credentials.
 - Lock and unlock scripts directly with `owner_name` and `lock_password`. MCP does not expose ownership challenge, release, transfer, or script deletion tools; use the Flow Codeblock web UI or REST API for unsupported operations.
 - Execution performs normal authentication, rate limiting, quota accounting, security validation, auditing, and statistics.

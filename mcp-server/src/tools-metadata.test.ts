@@ -174,7 +174,7 @@ describe("MCP tool metadata", () => {
         }
       | undefined;
     const interfaceDocPatch = byName.get("flow_preview_script_change")?.inputSchema.properties?.interface_doc_patch as
-      | { type?: string; maxItems?: number; items?: unknown }
+      | { type?: string; maxItems?: number; items?: unknown; description?: string }
       | undefined;
     expect(interfaceDocPatch?.type).toBe("array");
     expect(interfaceDocPatch?.maxItems).toBe(256);
@@ -205,6 +205,9 @@ describe("MCP tool metadata", () => {
     });
     expect(interfaceDoc?.description).toContain("logic_description");
     expect(interfaceDoc?.description).toContain("usage_refs is only for real application references");
+    expect(interfaceDoc?.description).toContain("app_id");
+    expect(interfaceDoc?.description).toContain("numeric-looking IDs");
+    expect(interfaceDocPatch?.description).toContain("app_id is a string, not a number");
     expect(interfaceDoc?.description).toContain("request={query?,headers?,body?}");
     expect(interfaceDoc?.description).toContain("root Schema node for every request or response body");
     expect(interfaceDoc?.description).toContain("homogeneous dictionaries with runtime-only keys");
