@@ -7,7 +7,7 @@ Local stdio MCP server for Flow Codeblock Rust+Bun. It calls the server-side Rus
 Bun 1.4.0 or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.13
+bunx --bun flow-codeblock-rust-mcp@0.1.14
 ```
 
 Configure the environment:
@@ -26,7 +26,7 @@ export FLOW_CODEBLOCK_TOKEN='<YOUR_INTERNAL_ACCESS_TOKEN>'
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.13"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.14"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_INTERNAL_ACCESS_TOKEN>"
@@ -56,7 +56,7 @@ At initialization the server sends complete tool selection, preview/confirmation
 
 Interface documents must include `schema_version`, `title`, `summary`, `endpoint`, `request`, `responses`, and `logic_description`. `endpoint` requires `methods` and `description`; `request.query` and `request.headers` must exist (use `[]` when empty). POST documents also require `request.body` with `content_type`, `schema`, and `example`. Every response requires `status`, `description`, `content_type`, `schema`, and `example`; every query/header parameter requires `name`, `type`, `required`, `description`, and `example`.
 
-Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP accepts one legacy JSON-text parse, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
+Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. Put every fixed business field schema inside its object's `schema.properties`; do not place named field schemas beside `properties`. Submit `interface_doc` as a native JSON object without manual stringification, Markdown, or trailing commas. MCP accepts one legacy JSON-text parse for compatibility, but malformed JSON cannot be repaired after the tool boundary; it fills examples only from matching parent examples and uses a neutral description when one is omitted.
 
 `endpoint.path` is relative and omitted when creating; on update MCP canonicalizes it from `script_id` to `/flow/codeblock/<actual-script-id>`. Public request URLs combine the caller-provided service origin with `/flow/codeblock/{{script_id}}`. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
 

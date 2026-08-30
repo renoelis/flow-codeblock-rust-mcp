@@ -390,6 +390,100 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(normalizedData.description).toContain("Value for field");
   });
 
+  test("moves example-backed schema fields placed beside properties", async () => {
+    const document = completeInterfaceDocument();
+    (document.endpoint as Record<string, unknown>).path = "/flow/codeblock/example";
+    const response = document.responses[0] as Record<string, any>;
+    response.schema = {
+      type: "object",
+      properties: {
+        success: { type: "boolean", description: "Whether the operation succeeded.", example: true },
+        data: {
+          type: "object",
+          description: "Calculated result.",
+          example: {
+            months: [{ month: "2024-02" }],
+            monthCount: 1,
+            totalDays: 29,
+            range: { startDate: "2024-02-01", endDate: "2024-02-29" },
+          },
+          required: ["months", "monthCount", "totalDays", "range"],
+          properties: {
+            months: {
+              type: "array",
+              description: "Months in the range.",
+              example: [{ month: "2024-02" }],
+              items: {
+                type: "object",
+                description: "One month.",
+                example: { month: "2024-02" },
+                properties: {
+                  month: { type: "string", description: "Month label.", example: "2024-02" },
+                },
+                required: ["month"],
+              },
+            },
+          },
+          monthCount: { type: "integer", description: "Number of months.", example: 1 },
+          totalDays: { type: "integer", description: "Total number of days.", example: 29 },
+          range: {
+            type: "object",
+            description: "Effective date range.",
+            properties: {
+              startDate: { type: "string", description: "Effective start date.", example: "2024-02-01" },
+              endDate: { type: "string", description: "Effective end date.", example: "2024-02-29" },
+            },
+            required: ["startDate", "endDate"],
+          },
+        },
+      },
+    };
+    response.example = {
+      success: true,
+      data: {
+        months: [{ month: "2024-02" }],
+        monthCount: 1,
+        totalDays: 29,
+        range: { startDate: "2024-02-01", endDate: "2024-02-29" },
+      },
+    };
+
+    const normalized = normalizeInterfaceDocument(document) as any;
+    expect(interfaceDocCompletenessIssues(normalized, "update")).toEqual([]);
+    const dataSchema = normalized.responses[0].schema.properties.data;
+    expect(dataSchema.properties).toEqual(expect.objectContaining({
+      monthCount: expect.any(Object),
+      totalDays: expect.any(Object),
+      range: expect.any(Object),
+    }));
+    expect(dataSchema).not.toHaveProperty("monthCount");
+    expect(dataSchema).not.toHaveProperty("totalDays");
+    expect(dataSchema).not.toHaveProperty("range");
+
+    await withMockApi(
+      (request) => {
+        expect(request.method).toBe("POST");
+        const body = request.body as Record<string, any>;
+        expect(body.interface_doc.responses[0].schema.properties.data.properties).toEqual(expect.objectContaining({
+          monthCount: expect.any(Object),
+          totalDays: expect.any(Object),
+          range: expect.any(Object),
+        }));
+        return json({ valid: true, interface_doc: body.interface_doc });
+      },
+      async (baseUrl, requests) => {
+        const preview = await callTool(baseUrl, "flow_preview_script_change", {
+          operation: "create",
+          code: "return input;",
+          description: "Month range",
+          interface_doc: document,
+        });
+        expect(preview.isError).not.toBe(true);
+        expect(requests).toHaveLength(1);
+      },
+    );
+  });
+
   test("publishes the current module contract without removed crypto-js or invalid Excel entries", async () => {
     const response = await callTool("http://127.0.0.1:3003", "flow_write_code", {
       mode: "non_script",

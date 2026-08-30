@@ -66,7 +66,7 @@
       "required": ["content_type", "schema", "example"],
       "properties": {
         "content_type": {"const": "application/json"},
-        "schema": {},
+        "schema": {"description": "JSON Schema root. For object schemas, put every fixed business field schema inside properties; do not place named field schemas beside properties."},
         "example": {}
       },
       "additionalProperties": false
@@ -78,7 +78,7 @@
         "status": {"type": "integer", "minimum": 100, "maximum": 599},
         "description": {"type": "string", "minLength": 1, "maxLength": 4000},
         "content_type": {"const": "application/json"},
-        "schema": {},
+        "schema": {"description": "JSON Schema root. For object schemas, put every fixed business field schema inside properties; do not place named field schemas beside properties."},
         "example": {}
       },
       "additionalProperties": false

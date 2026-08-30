@@ -21,13 +21,14 @@ export const interfaceDocNestedRules = [
   "Every JSON Schema node declares type. Object schemas use properties for fixed fields or a complete additionalProperties schema for dynamic keys.",
   "Every array schema has items. Object array items have complete properties, and every example item covers those properties.",
   "At every nesting level, schema properties and example fields cover each other. Optional properties still appear in the complete example.",
+  "For object schemas, put every business field schema inside properties; never place named field schemas beside properties.",
   "schema.example is metadata on the schema node; do not add an example field under schema.properties unless example is an actual business field.",
   "required contains only runtime-required fields. Use separate responses when success and error payloads have different shapes.",
 ];
 
 export const interfaceDocInputDescription = [
   "A complete script-interface-doc.v1 document is required when creating a script, changing code, or saving documentation.",
-  "Submit interface_doc/document as a JSON object. Legacy JSON text is accepted and parsed once by MCP for compatibility. MCP fills nested examples only from matching parent examples, uses a neutral description when one is omitted, rewrites legacy internal input references in prose, and never guesses a missing type.",
+  "Submit interface_doc/document as a native JSON object; do not manually stringify it, wrap it in Markdown, or add trailing commas. Legacy JSON text is accepted and parsed once by MCP for compatibility, but malformed JSON cannot be repaired after the tool boundary. MCP fills nested examples only from matching parent examples, uses a neutral description when one is omitted, rewrites legacy internal input references in prose, and never guesses a missing type.",
   `Required structure: ${Object.entries(interfaceDocRequiredFields).map(([key, fields]) => `${key}=[${fields.join(", ")}]`).join("; ")}.`,
   ...interfaceDocNestedRules,
   "endpoint.path is relative; omit it on create. On update MCP canonicalizes it to /flow/codeblock/<actual-script-id> from script_id before validation; the final public URL is the caller-provided domain followed by /flow/codeblock/<script-id>.",
@@ -78,7 +79,7 @@ schemaNodeInputSchema = z.lazy(() => z.looseObject({
   type: z.string().min(1).describe("JSON Schema type such as object, array, string, integer, number, or boolean."),
   description: z.string().min(1).describe("Description of this nested field or data structure."),
   example: z.unknown().describe("A concrete value matching this nested schema node."),
-  properties: z.record(z.string(), schemaNodeInputSchema).optional().describe("Map fixed object field names to child schema nodes."),
+  properties: z.record(z.string(), schemaNodeInputSchema).optional().describe("Map every fixed object business field name to its child schema node; do not place named field schemas beside properties."),
   items: schemaNodeInputSchema.optional().describe("Child schema node for each array item."),
   additionalProperties: z.union([z.boolean(), schemaNodeInputSchema]).optional().describe("Boolean or child schema for dynamic object keys."),
   required: z.array(z.string()).optional().describe("Runtime-required object field names."),
@@ -88,7 +89,7 @@ const schemaRootInputSchema = z.looseObject({
   type: z.string().min(1).describe("JSON Schema type such as object, array, string, integer, number, or boolean."),
   description: z.string().optional().describe("Description of the root data structure."),
   example: z.unknown().optional().describe("Complete example matching this root schema."),
-  properties: z.record(z.string(), schemaNodeInputSchema).optional().describe("Map fixed object field names to child schema nodes."),
+  properties: z.record(z.string(), schemaNodeInputSchema).optional().describe("Map every fixed object business field name to its child schema node; do not place named field schemas beside properties."),
   items: schemaNodeInputSchema.optional().describe("Child schema node for each array item."),
   additionalProperties: z.union([z.boolean(), schemaNodeInputSchema]).optional().describe("Boolean or child schema for dynamic object keys."),
   required: z.array(z.string()).optional().describe("Runtime-required object field names."),
@@ -162,6 +163,33 @@ function hasOwn(object: JsonObject, key: string): boolean {
   return Object.prototype.hasOwnProperty.call(object, key);
 }
 
+const schemaKeywordNames = new Set([
+  "$anchor", "$comment", "$defs", "$dynamicAnchor", "$dynamicRef", "$id", "$ref", "$schema",
+  "additionalItems", "additionalProperties", "allOf", "anyOf", "const", "contains", "contentEncoding",
+  "contentMediaType", "default", "dependentRequired", "dependentSchemas", "description", "else", "enum",
+  "examples", "example", "exclusiveMaximum", "exclusiveMinimum", "format", "if", "items", "maxContains",
+  "maxItems", "maxLength", "maxProperties", "maximum", "minContains", "minItems", "minLength",
+  "minProperties", "minimum", "multipleOf", "not", "oneOf", "pattern", "patternProperties", "prefixItems",
+  "properties", "propertyNames", "readOnly", "required", "then", "title", "type", "unevaluatedItems",
+  "unevaluatedProperties", "uniqueItems", "writeOnly",
+]);
+
+function normalizeMisnestedSchemaProperties(schema: JsonObject, example: unknown): void {
+  // ponytail: only move example/required-backed schema-like siblings; ambiguous metadata stays strict.
+  if (schema.type !== "object" || !isObject(example)) return;
+  const properties = isObject(schema.properties) ? schema.properties : {};
+  const required = Array.isArray(schema.required) ? schema.required : [];
+  const moved: JsonObject = {};
+  for (const [key, value] of Object.entries(schema)) {
+    if (schemaKeywordNames.has(key) || key.startsWith("x-") || hasOwn(properties, key)) continue;
+    if (!isObject(value) || typeof value.type !== "string") continue;
+    if (!hasOwn(example, key) && !required.includes(key)) continue;
+    moved[key] = value;
+    delete schema[key];
+  }
+  if (Object.keys(moved).length > 0) schema.properties = { ...properties, ...moved };
+}
+
 function normalizeSchemaNode(
   schema: JsonObject,
   parentExample: unknown,
@@ -178,6 +206,7 @@ function normalizeSchemaNode(
     }
   }
   const example = hasOwn(schema, "example") ? schema.example : parentExample;
+  normalizeMisnestedSchemaProperties(schema, example);
   if (schema.type === "array") {
     if (isObject(schema.items)) {
       const itemExample = Array.isArray(example) && example.length > 0 ? example[0] : undefined;

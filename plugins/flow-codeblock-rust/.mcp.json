@@ -4,7 +4,7 @@
       "title": "Flow Codeblock Rust+Bun",
       "description": "Manage and execute scripts through the current Flow Codeblock Rust API.",
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.13"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.14"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "http://127.0.0.1:3003"
       }

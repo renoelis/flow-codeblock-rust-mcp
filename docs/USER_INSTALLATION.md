@@ -19,7 +19,7 @@ Obtain a user-scoped `FLOW_CODEBLOCK_TOKEN` from your Flow Codeblock administrat
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.13"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.14"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -36,7 +36,7 @@ You can also check startup from a terminal:
 ```bash
 export FLOW_CODEBLOCK_BASE_URL=http://127.0.0.1:3003
 export FLOW_CODEBLOCK_TOKEN='<YOUR_FLOW_CODEBLOCK_TOKEN>'
-bunx --bun flow-codeblock-rust-mcp@0.1.13
+bunx --bun flow-codeblock-rust-mcp@0.1.14
 ```
 
 After startup the process waits for the client to communicate over stdio; this is expected.
@@ -76,7 +76,7 @@ Script runtime input is an envelope: POST body fields are at `input.body`, query
 
 Script-mode generation requires a non-empty `description` of at most 20 Unicode characters; MCP validates it before any preview or publication call. API `timestamp`, `created_at`, `updated_at`, and `locked_at` fields use `Asia/Shanghai` (`UTC+08:00`).
 
-Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP performs one compatibility parse for legacy JSON text, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
+Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. Put every fixed business field schema inside its object's `schema.properties`; do not place named field schemas beside `properties`. Submit `interface_doc` as a native JSON object without manual stringification, Markdown, or trailing commas. MCP performs one compatibility parse for legacy JSON text, but malformed JSON cannot be repaired after the tool boundary; it fills examples only from matching parent examples and uses a neutral description when one is omitted.
 
 Generated code treats `input` as a reserved, read-only runtime binding: never declare, rebind, or shadow it in any scope. Non-script code may alias it directly; published script code must read the request body through `input.body` and can use `const envelope = input || {}; const payload = envelope.body || {};`. Review the complete source for input shadowing before every execution and retry.
 

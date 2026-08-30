@@ -9,7 +9,7 @@ This project is maintained separately from the existing `flow-codeblock-mcp` rep
 Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.13
+bunx --bun flow-codeblock-rust-mcp@0.1.14
 ```
 
 The MCP client must inject these environment variables before startup:
@@ -30,7 +30,7 @@ Clients that support local stdio MCP servers can use:
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.13"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.14"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -78,7 +78,7 @@ Script runtime input is an envelope: POST body fields are at `input.body`, query
 
 Script-mode generation requires a non-empty `description` of at most 20 Unicode characters; MCP validates it before any preview or publication call. API `timestamp`, `created_at`, `updated_at`, and `locked_at` fields use `Asia/Shanghai` (`UTC+08:00`).
 
-Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP accepts one legacy JSON-text parse, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
+Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. Put every fixed business field schema inside its object's `schema.properties`; do not place named field schemas beside `properties`. Submit `interface_doc` as a native JSON object without manual stringification, Markdown, or trailing commas. MCP accepts one legacy JSON-text parse for compatibility, but malformed JSON cannot be repaired after the tool boundary; it fills examples only from matching parent examples and uses a neutral description when one is omitted.
 
 Patches contain at most 256 `add/remove/replace/move/copy/test` operations and use JSON Pointer paths. Preview results show operation counts, paths, warnings, and version information; they do not echo the merged document.
 
