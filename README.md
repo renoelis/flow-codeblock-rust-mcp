@@ -9,7 +9,7 @@ This project is maintained separately from the existing `flow-codeblock-mcp` rep
 Bun `1.4.0` or newer is required:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@0.1.12
+bunx --bun flow-codeblock-rust-mcp@0.1.13
 ```
 
 The MCP client must inject these environment variables before startup:
@@ -30,7 +30,7 @@ Clients that support local stdio MCP servers can use:
   "mcpServers": {
     "flow-codeblock-rust": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.12"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@0.1.13"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://flow.example.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>"
@@ -75,6 +75,8 @@ The MCP server sends complete tool selection, preview/confirmation, runtime, and
 Script URLs are built from the caller-provided service origin and `/flow/codeblock/{{script_id}}`. `endpoint.path` is relative and omitted when creating; on update MCP canonicalizes it from `script_id` to `/flow/codeblock/<actual-script-id>`. Never put real tokens, passwords, cookies, or Authorization values in code, documents, examples, or URLs.
 
 Script runtime input is an envelope: POST body fields are at `input.body`, query parameters at `input.query`, headers at `input.header`, and cookies at `input.cookies`. `flow_execute_code` uses the raw `body.input` business object for non-script code; script-mode verification must pass the envelope shape so it matches published execution.
+
+Script-mode generation requires a non-empty `description` of at most 20 Unicode characters; MCP validates it before any preview or publication call. API `timestamp`, `created_at`, `updated_at`, and `locked_at` fields use `Asia/Shanghai` (`UTC+08:00`).
 
 Every nested schema property, array item, and object-form `additionalProperties` node requires `type`, `description`, and `example`, with examples covering declared fields. MCP accepts one legacy JSON-text parse, fills examples only from matching parent examples, and uses a neutral description when one is omitted.
 

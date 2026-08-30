@@ -33,6 +33,7 @@ const serverInstructions = [
   "User-code execution failures preserve the server error type, concise message, and stack when available. Verified source locations are in error.details with one-based line, column, and lineContent; details are omitted when the location cannot be verified. Security-policy messages contain the rule reason only; do not parse source locations from message or expect duplicated location text. Direct execution uses SyntaxError for parse failures and SecurityError for execution policy failures; these user-code failures are non-retryable HTTP 422 responses. Script-save validation may retain ValidationError for policy failures.",
   "Tool routing: flow_write_code only generates code and its contract; flow_execute_code tests unpublished generated code; flow_execute_script runs published scripts. When the generated code and available safe input are sufficient for a meaningful runtime test, execute it immediately without waiting for user confirmation. If required input or credentials are missing, report that runtime verification was not performed instead of inventing them.",
   "Script workflow: read the current version with flow_get_script before updates; creates require a complete interface_doc, while code or document updates may use a complete interface_doc or an RFC 6902 interface_doc_patch (never both, and patches require expected_version). Preview with flow_preview_script_change, then call flow_apply_script_change(confirm=true) only after explicit user confirmation. Documentation-only changes use flow_preview_script_documentation -> flow_apply_script_documentation.",
+  "Script-mode generation and creation require a non-empty description of at most 20 Unicode characters; provide it in flow_write_code.description and flow_preview_script_change.description. API timestamp, created_at, updated_at, and locked_at fields use Asia/Shanghai (UTC+08:00).",
   "Preview IDs are single-use and time-limited. On a version conflict, expired preview, or validation failure, stop, read again, and preview again; never retry an old preview_id. Every flow_apply_* call requires confirm=true.",
   "Interface-document validation reports every discovered nested schema issue in one response; fix the complete list before making another preview call.",
   "script-interface-doc.v1 requires schema_version, title, summary, endpoint, request, responses, and logic_description. endpoint requires methods and description; request.query and request.headers are required arrays (use [] when empty); POST requires request.body and GET-only documents must omit it. JSON Patch supports at most 256 add/remove/replace/move/copy/test operations; preview responses show operation counts and paths, not merged documents.",
@@ -167,12 +168,19 @@ const documentationFields = {
   expected_version: z.number().int().positive().optional().describe("Current script version for a patch; required with document_patch and must come from a fresh current-version read."),
 };
 
+const scriptDescriptionSchema = z.string()
+  .trim()
+  .min(1)
+  .max(20, "Script description must be 1-20 characters")
+  .refine((value) => [...value].length <= 20, "Script description must be 1-20 characters")
+  .describe("Short script description shown in script lists; required on create and limited to 20 characters.");
+
 const changeSchema = z.object({
   operation: z.enum(["create", "update"]).describe("create adds a script; update changes an existing script."),
   script_id: z.string().min(1).optional().describe("Target script ID for update; forbidden for create."),
   code: z.string().optional().describe("UTF-8 JavaScript source, mutually exclusive with code_base64. Required when creating or changing code; provide executable JavaScript only."),
   code_base64: z.string().optional().describe("Non-empty Base64-encoded JavaScript, mutually exclusive with code."),
-  description: z.string().optional().describe("Script description. Can be updated without changing code."),
+  description: scriptDescriptionSchema.optional().describe("Short script description shown in script lists; required on create and limited to 20 characters."),
   ip_whitelist: z.array(z.string()).nullable().optional().describe("Source IP/CIDR allowlist. Omit on update to keep the current value; null or [] clears the restriction."),
   interface_doc: interfaceDocToolInputSchema.optional().describe(interfaceDocInputDescription),
   interface_doc_patch: interfaceDocPatchSchema.optional().describe("RFC 6902 patch for update only; mutually exclusive with interface_doc and forbidden for create."),
@@ -217,6 +225,7 @@ function assertScriptChangeInput(input: z.infer<typeof changeSchema>): void {
       throw new Error("Create preview must not include script_id or expected_version");
     }
     if (!hasCode) throw new Error("Create preview requires code or code_base64");
+    if (input.description === undefined) throw new Error("Create preview requires a script description of 1-20 characters");
     if (input.interface_doc_patch !== undefined) {
       throw new Error("Create preview cannot use interface_doc_patch; submit a complete interface_doc");
     }
@@ -305,7 +314,7 @@ function assertPreview(record: ReturnType<PreviewStore<Record<string, unknown>>[
 
 export function createMcpServer({ api, previews = new PreviewStore() }: McpServerOptions): McpServer {
   const server = new McpServer(
-    { name: "flow-codeblock-rust", version: "0.1.12" },
+    { name: "flow-codeblock-rust", version: "0.1.13" },
     { instructions: serverInstructions },
   );
 
@@ -313,10 +322,11 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     "flow_write_code",
     {
       title: "Get the Flow JavaScript authoring contract",
-      description: "Call this before writing or revising Flow Codeblock JavaScript. It returns the mode-specific authoring contract, including forbidden-identifier and reserved-input replacement rules, and never writes the database, publishes a script, or executes code. For every non_script generation or revision, always deliver the complete latest generated JavaScript plus execution_url, never only a patch or partial snippet; use script for persistent GET/POST /flow/codeblock/{{script_id}} code with a complete script-interface-doc.v1 for preview, validation, and publication. Script delivery includes invocation instructions, parameters/examples, logic, success/error examples, and script_url rather than source or raw interface_doc unless requested. Set base_url only when a caller-facing URL template is needed.",
+      description: "Call this before writing or revising Flow Codeblock JavaScript. It returns the mode-specific authoring contract, including forbidden-identifier and reserved-input replacement rules, and never writes the database, publishes a script, or executes code. Script mode requires a non-empty description of at most 20 Unicode characters. For every non_script generation or revision, always deliver the complete latest generated JavaScript plus execution_url, never only a patch or partial snippet; use script for persistent GET/POST /flow/codeblock/{{script_id}} code with a complete script-interface-doc.v1 for preview, validation, and publication. Script delivery includes invocation instructions, parameters/examples, logic, success/error examples, and script_url rather than source or raw interface_doc unless requested. Set base_url only when a caller-facing URL template is needed.",
       inputSchema: {
         mode: z.enum(["non_script", "script"]).describe("Generation mode. Use non_script for immediate, non-persistent execution; use script for a persistent GET/POST endpoint or HTTP redirects."),
         requirement: z.string().min(1).max(20_000).describe("Complete business requirements, input fields, expected output, external APIs, synchronization/async needs, and error behavior. Include only requirements relevant to this code."),
+        description: scriptDescriptionSchema.optional(),
         input_example: z.unknown().optional().describe("Business input example. In script mode it helps generate request.body/schema/example; in non_script mode it supplies flow_execute_code test input. Never include real credentials."),
         include_full_schema: z.boolean().optional().describe("Whether to include the complete recursive JSON Schema in the response; defaults to true for script mode to avoid a follow-up schema call. Set false only when the caller already has the schema."),
         base_url: z.string().url().refine((value) => {
@@ -332,8 +342,11 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
           .describe("Optional caller service origin such as https://flow.example.com. Used only to render /flow/codeblock/{{script_id}}; credentials and control characters are forbidden."),
       },
     },
-    async ({ mode, requirement, input_example, include_full_schema, base_url }) => {
-      const context = codeWriterContext(mode, requirement, input_example, include_full_schema ?? mode === "script", base_url);
+    async ({ mode, requirement, description, input_example, include_full_schema, base_url }) => {
+      if (mode === "script" && description === undefined) {
+        throw new Error("Script mode requires a description of 1-20 characters");
+      }
+      const context = codeWriterContext(mode, requirement, input_example, include_full_schema ?? mode === "script", base_url, description);
       return result(mode === "non_script" ? { ...context, execution_url: executionUrl(api) } : context);
     },
   );
@@ -433,7 +446,7 @@ export function createMcpServer({ api, previews = new PreviewStore() }: McpServe
     "flow_preview_script_change",
     {
       title: "Preview script change",
-      description: "Preview a script create or update without writing to the database. A create requires code or code_base64 plus a complete interface_doc and must not include script_id or expected_version. An update requires script_id and a freshly read expected_version; changing code also requires a complete interface_doc or interface_doc_patch. After a successful preview, call flow_apply_script_change(confirm=true) only after explicit user confirmation.",
+      description: "Preview a script create or update without writing to the database. A create requires code or code_base64, a non-empty description of at most 20 Unicode characters, and a complete interface_doc; it must not include script_id or expected_version. An update requires script_id and a freshly read expected_version; changing code also requires a complete interface_doc or interface_doc_patch. After a successful preview, call flow_apply_script_change(confirm=true) only after explicit user confirmation.",
       inputSchema: changeSchema.shape,
     },
     withApiErrors(async (input) => {

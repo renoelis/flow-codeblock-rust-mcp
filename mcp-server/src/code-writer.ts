@@ -165,6 +165,7 @@ export function codeWriterContext(
   inputExample: unknown,
   includeFullSchema: boolean,
   baseUrl?: string,
+  scriptDescription?: string,
 ): Record<string, unknown> {
   const common = {
     contract_version: "flow-code-writer.v1",
@@ -267,6 +268,7 @@ export function codeWriterContext(
   const endpointPathTemplate = "/flow/codeblock/{{script_id}}";
   return {
     ...common,
+    script_description: scriptDescription,
     input_contract: {
       endpoint: "GET|POST /flow/codeblock/{{script_id}}",
       shape: { query: {}, header: {}, body: {}, cookies: {} },
@@ -325,6 +327,7 @@ export function codeWriterContext(
       code: "flow_redirect_code must be 301, 302, 303, 307, or 308, as a number or numeric string.",
     },
     workflow: [
+      "For script creates, pass the supplied script_description as flow_preview_script_change.description; it must be 1-20 characters.",
       "For updates, call flow_get_script first to read the current version; for documentation updates, flow_get_script_documentation may be called first.",
       "Generate code and a complete interface_doc together; call flow_preview_script_change once for a create or code update.",
       "Call flow_apply_script_change or flow_apply_script_documentation only after explicit user confirmation, with confirm=true.",

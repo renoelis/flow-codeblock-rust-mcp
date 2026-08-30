@@ -175,6 +175,7 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(instructions).toContain("fs/node:fs");
       expect(instructions).toContain("flow_execute_code uses body.input unchanged as the direct business object");
       expect(instructions).toContain("published /flow/codeblock/{script_id} always injects an envelope");
+      expect(instructions).toContain("20 Unicode characters");
       const listed = await client.listTools();
       expect(listed.tools).toHaveLength(expectedToolNames.length);
       expect(new Set(listed.tools.map((tool) => tool.name))).toEqual(new Set(expectedToolNames));
@@ -192,6 +193,7 @@ describe("Flow Codeblock Rust MCP", () => {
       expect(writeCode?.description).toContain("complete script-interface-doc.v1");
       expect(writeCode?.description).toContain("every non_script generation or revision");
       expect(writeCode?.description).toContain("Script delivery includes invocation instructions");
+      expect(writeCode?.description).toContain("20 Unicode characters");
       expect(writeCode?.inputSchema.properties?.base_url).toBeDefined();
       const baseUrlSchema = writeCode?.inputSchema.properties?.base_url as { description?: string } | undefined;
       expect(baseUrlSchema?.description).toContain("/flow/codeblock/{{script_id}}");
@@ -239,6 +241,7 @@ describe("Flow Codeblock Rust MCP", () => {
     const response = await callTool("http://127.0.0.1:3003", "flow_write_code", {
       mode: "script",
       requirement: "查询订单状态",
+      description: "订单状态查询",
       base_url: "https://flow.example.com/",
     });
     const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
@@ -272,10 +275,28 @@ describe("Flow Codeblock Rust MCP", () => {
     expect(payload.interface_doc_contract?.full_json_schema).toBeDefined();
   });
 
+  test("requires a bounded description for script generation", async () => {
+    const missing = await callTool("http://127.0.0.1:3003", "flow_write_code", {
+      mode: "script",
+      requirement: "Return the submitted value.",
+    });
+    expect(missing.isError).toBe(true);
+    expect(JSON.stringify(missing)).toContain("description of 1-20 characters");
+
+    const tooLong = await callTool("http://127.0.0.1:3003", "flow_write_code", {
+      mode: "script",
+      requirement: "Return the submitted value.",
+      description: "123456789012345678901",
+    });
+    expect(tooLong.isError).toBe(true);
+    expect(JSON.stringify(tooLong)).toContain("1-20 characters");
+  });
+
   test("publishes an envelope-shaped script verification input", async () => {
     const response = await callTool("http://127.0.0.1:3003", "flow_write_code", {
       mode: "script",
       requirement: "Return the month range for two dates.",
+      description: "Month range",
       input_example: { start_date: "2024-01-15", end_date: "2024-04-10" },
     });
     const text = (response.content?.[0] as { text?: string } | undefined)?.text ?? "{}";
@@ -303,6 +324,7 @@ describe("Flow Codeblock Rust MCP", () => {
         const response = await callTool(baseUrl, "flow_preview_script_change", {
           operation: "create",
           code: "return input;",
+          description: "Example script",
           interface_doc: JSON.stringify(document),
         });
         expect(response.isError).not.toBe(true);
@@ -638,6 +660,7 @@ describe("Flow Codeblock Rust MCP", () => {
         const response = await callTool(baseUrl, "flow_preview_script_change", {
           operation: "create",
           code: "return input;",
+          description: "Example script",
           interface_doc: { schema_version: "script-interface-doc.v1" },
         });
         expect(response.isError).toBe(true);

@@ -17,7 +17,7 @@ This Skill works with the plugin's local stdio MCP server. The MCP server calls 
 
 ## Tool selection
 
-- `flow_list_scripts`: list scripts with the current API's page or cursor pagination.
+- `flow_list_scripts`: list scripts with the current API's page or cursor pagination; `keyword` matches both script description and script ID.
 - `flow_get_script`: read the current or a historical version's code and metadata.
 - `flow_get_script_documentation`: read current or historical interface documentation.
 - `flow_validate_script_documentation`: validate and normalize documentation without writing to the database.
@@ -37,6 +37,8 @@ This Skill works with the plugin's local stdio MCP server. The MCP server calls 
 4. Apply tools read the current version again and pass `expected_version` to the Rust API's transactional version check. On a version change, expired preview, or preview-content validation failure, stop and read/preview again.
 
 `POST /flow/scripts/validate` is the read-only unified validation endpoint. MCP previews use it for code, IP allowlists, complete documents, and patches. Final writes re-submit patches and validate the current document and `expected_version` in a transaction; version conflicts return HTTP 409. Patch previews never echo the complete merged document.
+
+Script-mode generation requires a non-empty `description` of at most 20 Unicode characters; MCP validates it before any preview or publication call. API `timestamp`, `created_at`, `updated_at`, and `locked_at` fields use `Asia/Shanghai` (`UTC+08:00`).
 
 Execution errors preserve the server's error type, concise message, and stack when available. Verified user-code locations are returned in `error.details.line`, `error.details.column`, and `error.details.lineContent` using one-based line and column numbers; details are omitted when the location cannot be verified. Security-policy messages contain only the concise rule reason; source location, matched text, and source line are not duplicated in `message`. Direct execution uses `SyntaxError` for parse failures and `SecurityError` for execution policy failures; these user-code failures return HTTP 422 with `retryable: false`. Script-save validation may retain `ValidationError` for policy failures.
 

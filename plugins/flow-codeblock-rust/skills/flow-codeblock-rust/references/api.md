@@ -94,6 +94,8 @@ Create request:
 
 An update may include `expected_version`, `code_base64`, `description`, `ip_whitelist`, `interface_doc`, `interface_doc_patch`, or `rollback_to_version`. `interface_doc` and `interface_doc_patch` are mutually exclusive; patches are allowed only for existing scripts and require a positive integer `expected_version`. The server canonicalizes the current document, applies up to 256 RFC 6902 operations in order, and validates the result. A version conflict returns HTTP 409 `VersionConflictError`. Creates forbid patches; `code_base64` and `rollback_to_version` cannot be combined.
 
+MCP script-mode generation requires a non-empty `description` of at most 20 Unicode characters. API `timestamp`, `created_at`, `updated_at`, and `locked_at` fields use `Asia/Shanghai` (`UTC+08:00`).
+
 Interface documents use `script-interface-doc.v1`. Methods are limited to the script runtime's `GET` and `POST`; `endpoint.path` may be omitted on create and must be `/flow/codeblock/<actual-script-id>` on update. A public URL is built from the caller-provided domain and `/flow/codeblock/{{script_id}}`. Request and response `schema` fields use JSON Schema; multiple entries may describe different business results for the same status code. Documents can be submitted through `document`, `raw_document`, or `document_patch` applied to an existing document. Patch paths use JSON Pointer, and preview results return only operation counts, paths, warnings, and version information. Description-only and IP-allowlist-only changes do not increment the script version; canonical document or code changes create a new version.
 
 Final delivery is mode-specific. Non-script mode shows complete JavaScript, invocation instructions, request parameters and examples, execution logic, success/error examples, and a complete `execution_url`. Script mode hides JavaScript and raw `interface_doc` by default and shows invocation instructions, request parameters and examples, execution logic, success/error examples, and the published `script_url`, unless source or raw documentation is explicitly requested.
@@ -142,6 +144,8 @@ List queries use offset pagination by default:
 ```text
 GET /flow/scripts?page=1&size=20&keyword=invoice&sort=updated_at&order=desc
 ```
+
+`keyword` matches both script descriptions and script IDs; records with the same sort-field value use the script ID in the same direction as a stable tie-breaker.
 
 Cursor pagination uses `pagination=cursor`; omit `cursor` on the first request and use the cursor returned by the previous response:
 
