@@ -6,10 +6,11 @@ on:
       - main
     paths:
       - "mcp-server/**"
-      - "plugins/**"
+      - "skills/**"
+      - "package.json"
       - ".mcp.json"
       - "README.md"
-      - "docs/**"
+      - "LICENSE"
       - ".github/workflows/publish.yml"
   workflow_dispatch:
 
@@ -35,10 +36,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Build and run MCP tests
-        working-directory: mcp-server
-        run: |
-          bun run check
-          bun test
+        run: bun run prepack
 
       - name: Configure npm authentication
         if: ${{ env.NODE_AUTH_TOKEN != '' }}
@@ -49,7 +47,6 @@ jobs:
 
       - name: Publish version when needed
         if: ${{ env.NODE_AUTH_TOKEN != '' }}
-        working-directory: mcp-server
         run: |
           set -euo pipefail
           package_name="$(node -p "require('./package.json').name")"

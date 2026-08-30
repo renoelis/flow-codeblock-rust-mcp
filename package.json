@@ -1,0 +1,44 @@
+{
+  "name": "flow-codeblock-rust-mcp",
+  "version": "2.0.0",
+  "description": "Flow Codeblock stdio MCP Server and Codex Skill for JavaScript execution and script management.",
+  "type": "module",
+  "bin": {
+    "flow-codeblock-rust-mcp": "mcp-server/src/index.ts"
+  },
+  "files": [
+    ".mcp.json",
+    "mcp-server/src/code-writer.ts",
+    "mcp-server/src/index.ts",
+    "mcp-server/src/interface-doc.ts",
+    "mcp-server/src/script-change.ts",
+    "skills/flow-codeblock/**"
+  ],
+  "scripts": {
+    "start": "bun run mcp-server/src/index.ts",
+    "check": "bun test mcp-server/src",
+    "prepack": "bun run check"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.1.12"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/renoelis/flow-codeblock-rust-mcp.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "bun",
+    "flow-codeblock"
+  ],
+  "author": "renoelis",
+  "license": "MIT"
+}

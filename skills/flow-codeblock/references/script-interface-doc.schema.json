@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://flow-codeblock.local/schemas/script-interface-doc.v1.json",
+  "title": "Flow Script Interface Document v1 - MCP Complete Contract",
+  "$comment": "MCP create and code updates use this complete contract. Omit request when there are no actual parameters; include it when parameters or a POST body must be documented.",
+  "type": "object",
+  "required": ["schema_version", "title", "summary", "endpoint", "responses", "logic_description"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": "script-interface-doc.v1"},
+    "title": {"type": "string", "minLength": 1, "maxLength": 200},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "endpoint": {
+      "type": "object",
+      "required": ["methods", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "methods": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["GET", "POST"]}},
+        "path": {"type": "string", "pattern": "^/flow/codeblock/", "description": "Optional in the web form and on MCP create; updates must use the actual script path. MCP builds the final URL from FLOW_CODEBLOCK_BASE_URL plus /flow/codeblock/{{script_id}} and returns it as data.script_url."},
+        "description": {"type": "string", "minLength": 1, "maxLength": 4000}
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {"$ref": "#/$defs/parameters"},
+        "headers": {"$ref": "#/$defs/parameters"},
+        "body": {"$ref": "#/$defs/body", "description": "Include when the actual POST body must be documented; omit request when there are no request parameters."}
+      }
+    },
+    "responses": {"type": "array", "minItems": 1, "maxItems": 50, "items": {"$ref": "#/$defs/response"}},
+    "logic_description": {"type": "string", "minLength": 20, "maxLength": 20000},
+    "usage_refs": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/usage"}}
+  },
+  "$defs": {
+    "parameters": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "required", "description", "example"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 200},
+          "type": {"enum": ["string", "integer", "number", "boolean", "array", "object"]},
+          "required": {"type": "boolean"},
+          "description": {"type": "string", "minLength": 1, "maxLength": 4000},
+          "example": {},
+          "default": {},
+          "format": {"type": "string", "maxLength": 100},
+          "enum_values": {"type": "array", "maxItems": 100}
+        }
+      }
+    },
+    "body": {
+      "type": "object",
+      "required": ["content_type", "schema", "example"],
+      "additionalProperties": false,
+      "properties": {
+        "content_type": {"const": "application/json"},
+        "schema": {"$ref": "#/$defs/schema_root"},
+        "example": {"description": "Required caller request-body value matching schema and covering schema.required fields; runtime-optional fields may be omitted."}
+      }
+    },
+    "response": {
+      "type": "object",
+      "required": ["status", "description", "content_type", "schema", "example"],
+      "additionalProperties": false,
+      "properties": {
+        "status": {"type": "integer", "minimum": 100, "maximum": 599},
+        "description": {"type": "string", "minLength": 1, "maxLength": 4000},
+        "content_type": {"const": "application/json"},
+        "schema": {"$ref": "#/$defs/schema_root"},
+        "example": {"description": "Required response value matching schema and covering schema.required fields; runtime-optional fields may be omitted."}
+      }
+    },
+    "schema_root": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "example": {},
+        "properties": {"type": "object", "description": "When keys are known from code or an example, declare each key with a complete schema_node.", "additionalProperties": {"$ref": "#/$defs/schema_node"}},
+        "items": {"$ref": "#/$defs/schema_node"},
+        "additionalProperties": {"description": "Use object Schema only for homogeneous dictionaries whose keys are known at runtime; true is only for opaque upstream JSON passed through unchanged. Do not use an empty object Schema as an arbitrary-value fallback.", "anyOf": [{"$ref": "#/$defs/schema_node"}, {"type": "boolean"}]},
+        "required": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "schema_node": {
+      "type": "object",
+      "required": ["type", "description", "example"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "description": {"type": "string", "minLength": 1},
+        "example": {},
+        "properties": {"type": "object", "description": "When keys are known from code or an example, declare each key with a complete schema_node.", "additionalProperties": {"$ref": "#/$defs/schema_node"}},
+        "items": {"$ref": "#/$defs/schema_node"},
+        "additionalProperties": {"description": "Use object Schema only for homogeneous dictionaries whose keys are known at runtime; true is only for opaque upstream JSON passed through unchanged. Do not use an empty object Schema as an arbitrary-value fallback.", "anyOf": [{"$ref": "#/$defs/schema_node"}, {"type": "boolean"}]},
+        "required": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "usage": {
+      "type": "object",
+      "required": ["app_name"],
+      "additionalProperties": false,
+      "properties": {
+        "app_id": {"type": "string", "maxLength": 200},
+        "app_name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "location": {"type": "string", "maxLength": 500},
+        "note": {"type": "string", "maxLength": 4000}
+      }
+    }
+  }
+}

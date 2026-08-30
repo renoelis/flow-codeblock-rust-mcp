@@ -1,5 +1,4 @@
 {
-  "auto_install_on_startup": true,
   "modules": [
     {
       "name": "axios",

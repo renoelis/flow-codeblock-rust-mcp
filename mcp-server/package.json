@@ -1,40 +1,14 @@
 {
   "name": "flow-codeblock-rust-mcp",
-  "version": "0.1.14",
-  "description": "Flow Codeblock Rust+Bun stdio MCP Server for script management and execution.",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/renoelis/flow-codeblock-rust-mcp.git"
-  },
-  "author": {
-    "name": "renoelis"
-  },
+  "version": "2.0.0",
+  "private": true,
   "type": "module",
-  "bin": {
-    "flow-codeblock-rust-mcp": "dist/index.js"
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "engines": {
-    "bun": ">=1.4.0"
-  },
   "scripts": {
-    "build": "bun run scripts/build.ts",
-    "check": "bun run scripts/build.ts",
-    "start": "bun run dist/index.js",
-    "test": "bun test",
-    "prepack": "bun run build"
+    "start": "bun run src/index.ts",
+    "check": "bun test src"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "zod": "4.1.12"
-  },
-  "devDependencies": {
-    "@types/bun": "1.2.21",
-    "@types/node": "24.10.1"
   }
 }

@@ -1,0 +1,40 @@
+{
+  "_comment": "Dangerous keyword and member patterns. Host changes take effect after restart; hot reload is not supported.",
+  "identifiers": {
+    "Function": "Function detected",
+    "Proxy": "Proxy detected",
+    "__proto__": "__proto__ detected",
+    "child_process": "child_process detected",
+    "eval": "eval detected",
+    "exec": "exec detected",
+    "execFile": "execFile detected",
+    "execSync": "execSync detected",
+    "exports": "exports is forbidden (CommonJS module/exports is disabled)",
+    "fork": "fork detected",
+    "module": "module is forbidden (CommonJS module/exports is disabled)",
+    "spawn": "spawn detected",
+    "setImmediate": "setImmediate detected",
+    "setInterval": "setInterval detected",
+    "setTimeout": "setTimeout detected"
+  },
+  "members": {
+    "Object": {
+      "getPrototypeOf": "Object.getPrototypeOf detected",
+      "setPrototypeOf": "Object.setPrototypeOf detected"
+    },
+    "Reflect": {
+      "apply": "Reflect.apply detected",
+      "construct": "Reflect.construct detected",
+      "get": "Reflect.get detected",
+      "set": "Reflect.set detected"
+    },
+    "process": {
+      "_linkedBinding": "process._linkedBinding detected",
+      "binding": "process.binding detected",
+      "dlopen": "process.dlopen detected",
+      "env": "User code must not read server environment variables; third-party API keys must be passed by the caller through input",
+      "exit": "process.exit detected",
+      "kill": "process.kill detected"
+    }
+  }
+}
