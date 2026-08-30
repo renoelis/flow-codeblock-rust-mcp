@@ -74,6 +74,7 @@ The MCP compatibility layer may infer a missing operation from `script_id` and i
 - Use only modules and versions listed in `modules.json`, with the allowed literal `require` forms.
 - Do not use dynamic `import`, ESM `import/export`, indirect `require`, `module`, `exports`, browser APIs, or any dangerous pattern listed in `dangerous_patterns.json`.
 - Treat every key under `dangerous_patterns.json` `identifiers` as forbidden even when it is a safe-looking property or method name. For example, use `String(value).match(pattern)` instead of `pattern.exec(String(value))`. Before returning code, check the complete source against every listed identifier and member.
+- Do not use JavaScript Unicode escapes in identifiers or property names (for example, `requ\u0069re` or `constr\u0075ctor`); the runtime rejects escaped names and they cannot be used to bypass the safety rules.
 - Do not use `eval`, `Function`, `Proxy`, `__proto__`, child-process APIs, timers, polling, background retries, unbounded loops, or unsettled Promises.
 - Default limits are 65,535 code bytes, 2 MiB input, 10 MiB result, 100 ms minimum timeout, and 15,000 ms maximum timeout; deployed configuration wins.
 
