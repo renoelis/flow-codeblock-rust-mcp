@@ -72,6 +72,9 @@ The MCP compatibility layer may infer a missing operation from `script_id` and i
 
 - Prefer native `URL`, `URLSearchParams`, Promises, and `fetch`.
 - Use only modules and versions listed in `modules.json`, with the allowed literal `require` forms.
+- Check the complete `module_blacklist.json` returned by `flow_write_code`; never use an entry under `forbidden_modules`.
+- The deployed runtime exposes Bun through a frozen, read-only facade controlled by deployment policy. Treat `Bun.<member>` as optional: high-risk members may be `undefined`, and never assume they are available for generated code.
+- `bun:*` modules may be blocked independently. When the deployment policy includes `bun`, the entire Bun facade is unavailable and all `bun:*` modules are blocked.
 - Do not use dynamic `import`, ESM `import/export`, indirect `require`, `module`, `exports`, browser APIs, or any dangerous pattern listed in `dangerous_patterns.json`.
 - Treat every key under `dangerous_patterns.json` `identifiers` as forbidden even when it is a safe-looking property or method name. For example, use `String(value).match(pattern)` instead of `pattern.exec(String(value))`. Before returning code, check the complete source against every listed identifier and member.
 - Do not use JavaScript Unicode escapes in identifiers or property names (for example, `requ\u0069re` or `constr\u0075ctor`); the runtime rejects escaped names and they cannot be used to bypass the safety rules.

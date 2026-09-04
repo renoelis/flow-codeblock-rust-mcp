@@ -1,5 +1,6 @@
 const agentPromptSource = "skills/flow-codeblock/references/AGENT_PROMPT.md";
 const dangerousPatternsSource = "skills/flow-codeblock/references/dangerous_patterns.json";
+const moduleBlacklistSource = "skills/flow-codeblock/references/module_blacklist.json";
 const interfaceDocSchemaSource = "skills/flow-codeblock/references/script-interface-doc.schema.json";
 const interfaceDocPatchSchemaSource = "skills/flow-codeblock/references/script-interface-doc.patch.schema.json";
 const referencesDirectory = new URL("../../skills/flow-codeblock/references/", import.meta.url);
@@ -20,6 +21,15 @@ export const dangerousPatterns: unknown = (() => {
     return JSON.parse(dangerousPatternsText);
   } catch (error) {
     throw new Error(`Flow Codeblock dangerous-pattern rules are invalid JSON: ${String(error)}`);
+  }
+})();
+
+const moduleBlacklistText = await readRequiredReference("module_blacklist.json");
+export const moduleBlacklist: unknown = (() => {
+  try {
+    return JSON.parse(moduleBlacklistText);
+  } catch (error) {
+    throw new Error(`Flow Codeblock module blacklist is invalid JSON: ${String(error)}`);
   }
 })();
 
@@ -51,7 +61,7 @@ export function codeWriterContext(
     mode,
     requirement,
     mutates_or_executes: false,
-    instruction: "Follow authoritative_rules.content and dangerous_patterns.value in full; both are loaded directly from the authoritative rule files, not summaries.",
+    instruction: "Follow authoritative_rules.content, dangerous_patterns.value, and module_blacklist.value in full; all are loaded directly from the authoritative reference files, not summaries.",
     authoritative_rules: {
       source: agentPromptSource,
       content: agentPrompt,
@@ -59,6 +69,10 @@ export function codeWriterContext(
     dangerous_patterns: {
       source: dangerousPatternsSource,
       value: dangerousPatterns,
+    },
+    module_blacklist: {
+      source: moduleBlacklistSource,
+      value: moduleBlacklist,
     },
   };
 

@@ -72,6 +72,20 @@ describe("codeWriterContext", () => {
     expect(objectField(patterns.value as Record<string, unknown>, "identifiers").exec).toBe("exec detected");
   });
 
+  test("returns the complete module and Bun API blacklist", async () => {
+    const expectedBlacklist = JSON.parse(
+      await Bun.file(new URL("module_blacklist.json", referencesDirectory)).text(),
+    );
+    const context = codeWriterContext("non_script", "调用接口");
+    const blacklist = objectField(context, "module_blacklist");
+
+    expect(blacklist.source).toBe("skills/flow-codeblock/references/module_blacklist.json");
+    expect(blacklist.value).toEqual(expectedBlacklist);
+    const value = blacklist.value as Record<string, unknown>;
+    expect(value.forbidden_modules).toEqual(expectedBlacklist.forbidden_modules);
+    expect(value.forbidden_bun_apis).toEqual(expectedBlacklist.forbidden_bun_apis);
+  });
+
   test("returns the parsed authoritative interface schema only when requested", async () => {
     const expectedSchema = JSON.parse(
       await Bun.file(new URL("script-interface-doc.schema.json", referencesDirectory)).text(),

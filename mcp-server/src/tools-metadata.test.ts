@@ -93,6 +93,7 @@ describe("MCP tool metadata", () => {
       "skills/flow-codeblock/references/AGENT_PROMPT.md",
       "skills/flow-codeblock/references/api.md",
       "skills/flow-codeblock/references/dangerous_patterns.json",
+      "skills/flow-codeblock/references/module_blacklist.json",
       "skills/flow-codeblock/references/script-interface-doc.schema.json",
       "skills/flow-codeblock/references/script-interface-doc.patch.schema.json",
     ]) {
@@ -279,11 +280,15 @@ describe("MCP tool metadata", () => {
     const payload = JSON.parse(textContent.text) as Record<string, unknown>;
     const rules = payload.authoritative_rules as Record<string, unknown>;
     const patterns = payload.dangerous_patterns as Record<string, unknown>;
+    const blacklist = payload.module_blacklist as Record<string, unknown>;
     const schema = payload.interface_document_schema as Record<string, unknown>;
     const referencesDirectory = new URL("../../skills/flow-codeblock/references/", import.meta.url);
     const expectedPrompt = await Bun.file(new URL("AGENT_PROMPT.md", referencesDirectory)).text();
     const expectedPatterns = JSON.parse(
       await Bun.file(new URL("dangerous_patterns.json", referencesDirectory)).text(),
+    );
+    const expectedBlacklist = JSON.parse(
+      await Bun.file(new URL("module_blacklist.json", referencesDirectory)).text(),
     );
     const expectedSchema = JSON.parse(
       await Bun.file(new URL("script-interface-doc.schema.json", referencesDirectory)).text(),
@@ -291,6 +296,7 @@ describe("MCP tool metadata", () => {
 
     expect(rules.content).toBe(expectedPrompt);
     expect(patterns.value).toEqual(expectedPatterns);
+    expect(blacklist.value).toEqual(expectedBlacklist);
     expect(schema.value).toEqual(expectedSchema);
   });
 });

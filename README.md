@@ -7,7 +7,7 @@ Local stdio MCP server and Codex Skill for Flow Codeblock. The MCP server calls 
 Requires Bun 1.4.1 or newer:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@2.0.6
+bunx --bun flow-codeblock-rust-mcp@2.0.7
 ```
 
 Required environment:
@@ -21,6 +21,8 @@ FLOW_CODEBLOCK_OWNER_NAME=Default Owner
 
 `FLOW_CODEBLOCK_BASE_URL` is the deployed Flow Codeblock Rust API base URL and the base for returned call URLs. Non-script tools return `${FLOW_CODEBLOCK_BASE_URL}/flow/codeblock` as `execution_url`; script create, update, and execution tools return `${FLOW_CODEBLOCK_BASE_URL}/flow/codeblock/{script_id}` as `script_url`. Other management tools do not return a call URL. Use `https://qingcode.oalite.com` for the public service, or the matching localhost URL for a local Rust deployment. Store the token in the client's environment or secret manager; never put it in prompts, tool arguments, or public files.
 
+The deployed Bun Supervisor exposes only a frozen, read-only Bun facade configured by the administrator. High-risk `Bun.<member>` APIs may be unavailable, and `bun:*` modules may be blocked independently; code must not assume either is present. Configuring `bun` disables the entire Bun facade and all `bun:*` modules. The package includes the default [module_blacklist.json](skills/flow-codeblock/references/module_blacklist.json), and `flow_write_code` returns its complete parsed contents for each code-writing request.
+
 When `FLOW_CODEBLOCK_OWNER_NAME` is configured, `owner_name` may be omitted from `flow_lock_script` and `flow_unlock_script`; explicit arguments win. Both tools call the Rust API directly with `owner_name` and `lock_password`. The current API has no ownership challenge, release, or transfer routes.
 
 ## Generic stdio configuration
@@ -30,7 +32,7 @@ When `FLOW_CODEBLOCK_OWNER_NAME` is configured, `owner_name` may be omitted from
   "mcpServers": {
     "flow-codeblock": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.6"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.7"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://qingcode.oalite.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>",

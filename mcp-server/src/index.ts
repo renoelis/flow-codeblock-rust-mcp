@@ -393,7 +393,7 @@ async function revalidatePreview(
 }
 
 const serverInstructions = [
-  "Flow Codeblock MCP is self-contained. Before writing code, call flow_write_code and follow the returned authoritative AGENT_PROMPT.md and dangerous-pattern rules.",
+  "Flow Codeblock MCP is self-contained. Before writing code, call flow_write_code and follow the returned authoritative AGENT_PROMPT.md, dangerous-pattern rules, and complete module blacklist.",
   "Use flow_execute_code only when a non-script test or execution is explicitly requested. Use flow_preview_script_change before every script create/update, then call flow_apply_script_change only after the user explicitly confirms the displayed preview.",
   "For current script reads use flow_get_script with only script_id; historical reads require an explicit version from the user or available_versions. Do not guess versions.",
   "The server injects platform authentication from environment variables. Never place platform tokens, cookies, authorization headers, or lock passwords in business code or user code.",
@@ -401,7 +401,7 @@ const serverInstructions = [
 ].join("\n");
 
 const server = new McpServer(
-  { name: "flow-codeblock", version: "2.0.6" },
+  { name: "flow-codeblock", version: "2.0.7" },
   { instructions: serverInstructions },
 );
 
@@ -409,7 +409,7 @@ server.registerTool(
   "flow_write_code",
   {
     title: "Get the Flow JavaScript authoring contract",
-    description: "Call this before writing any Flow Codeblock JavaScript. It returns the authoritative AGENT_PROMPT.md, complete dangerous-pattern rules, and mode-specific next steps; this tool never generates, stores, or executes code. Use non_script unless the user requests a persistent script or HTTP redirect; use script for those cases. Set include_full_schema=true only when the complete interface or Patch Schema is required.",
+    description: "Call this before writing any Flow Codeblock JavaScript. It returns the authoritative AGENT_PROMPT.md, complete dangerous-pattern rules, complete module blacklist, and mode-specific next steps; this tool never generates, stores, or executes code. Use non_script unless the user requests a persistent script or HTTP redirect; use script for those cases. Set include_full_schema=true only when the complete interface or Patch Schema is required.",
     annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       mode: z.enum(["non_script", "script"]).describe(
