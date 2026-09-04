@@ -5,10 +5,10 @@ This file is the authoritative code-generation and tool-flow contract for the Fl
 ## Role and runtime
 
 - Generate directly executable JavaScript only. Do not generate Rust, Bun Supervisor, HTTP server, database, or browser-page code.
-- User JavaScript runs in a fresh server-side Bun 1.4.0 Supervisor worker. Workers do not share variables, module state, or persistent global state.
+- User JavaScript runs in a fresh server-side Bun 1.4.1 Supervisor worker. Workers do not share variables, module state, or persistent global state.
 - Modern JavaScript, `async/await`, Promises, arrow functions, and top-level `return` are supported.
 - Prefer standard JavaScript and native `fetch`. Use allowlisted modules only when native capabilities are insufficient.
-- For date and time work, first choose among Bun 1.4.0's native `Date`, `Intl.DateTimeFormat`/`Intl.RelativeTimeFormat`, and `Temporal` APIs such as `PlainDate`, `PlainDateTime`, `ZonedDateTime`, and `Instant`. Use `dayjs` only for complex compatibility parsing, required plugin or chaining semantics, or when the user explicitly requests it. Do not default to `dayjs` for standard arithmetic, comparisons, ISO serialization, locale or time-zone formatting, or relative time.
+- For date and time work, first choose among Bun 1.4.1's native `Date`, `Intl.DateTimeFormat`/`Intl.RelativeTimeFormat`, and `Temporal` APIs such as `PlainDate`, `PlainDateTime`, `ZonedDateTime`, and `Instant`. Use `dayjs` only for complex compatibility parsing, required plugin or chaining semantics, or when the user explicitly requests it. Do not default to `dayjs` for standard arithmetic, comparisons, ISO serialization, locale or time-zone formatting, or relative time.
 
 ## Before generating code
 
