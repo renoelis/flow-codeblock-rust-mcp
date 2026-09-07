@@ -4,10 +4,10 @@ Local stdio MCP server and Codex Skill for Flow Codeblock. The MCP server calls 
 
 ## Installation
 
-Requires Bun 1.4.1 or newer:
+Requires Bun 1.4.2 or newer:
 
 ```bash
-bunx --bun flow-codeblock-rust-mcp@2.0.7
+bunx --bun flow-codeblock-rust-mcp@2.0.8
 ```
 
 Required environment:
@@ -32,7 +32,7 @@ When `FLOW_CODEBLOCK_OWNER_NAME` is configured, `owner_name` may be omitted from
   "mcpServers": {
     "flow-codeblock": {
       "command": "bunx",
-      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.7"],
+      "args": ["--bun", "flow-codeblock-rust-mcp@2.0.8"],
       "env": {
         "FLOW_CODEBLOCK_BASE_URL": "https://qingcode.oalite.com",
         "FLOW_CODEBLOCK_TOKEN": "<YOUR_FLOW_CODEBLOCK_TOKEN>",
